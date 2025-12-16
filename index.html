@@ -10,12 +10,14 @@
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300&display=swap" rel="stylesheet">
     
     <!-- Babel para procesar JSX en el navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .font-serif { font-family: 'Merriweather', serif; }
         .animate-in { animation: animateIn 0.5s ease-out; }
         .fade-in { opacity: 0; animation-fill-mode: forwards; animation-name: fadeIn; }
         .slide-in-from-bottom-4 { transform: translateY(1rem); animation-fill-mode: forwards; animation-name: slideIn; }
@@ -27,6 +29,13 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .letter-paper { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: none !important; }
+        }
     </style>
 
     <!-- Import Map: Define dónde buscar las librerías 'react', 'recharts', etc. -->
@@ -53,8 +62,8 @@
             PieChart, DollarSign, Calendar, AlertTriangle, ArrowRight, 
             Menu, X, BrainCircuit, Wallet, Target, BarChart3, ShieldCheck, 
             List, ChevronRight, Info, Printer, Sparkles, Bot, Settings, 
-            FileText, TrendingDown, Share2, Copy, Calculator, PiggyBank,
-            Coffee, Home, Car, ShoppingBag, Zap
+            FileText, TrendingDown, TrendingUp, Share2, Copy, Calculator, PiggyBank,
+            Coffee, Home, Car, ShoppingBag, Zap, ExternalLink, User, Building2, CreditCard
         } from 'lucide-react';
         
         import { 
@@ -615,6 +624,57 @@
                         </div>
                     </div>
 
+                    {/* Impacto Mensual Detallado */}
+                    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                        
+                        {/* Banco */}
+                        <div className="flex-1 w-full relative z-10">
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
+                                <span className="w-2 h-2 rounded-full bg-slate-300 mr-2"></span>
+                                Pago Mínimo (Banco)
+                            </p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-2xl lg:text-3xl font-bold text-slate-700">{formatCOP(metrics.monthlyObligatory)}</h3>
+                                <span className="text-xs text-slate-400 font-medium">/mes</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1 pl-4">Cuota obligatoria + Seguros</p>
+                        </div>
+
+                        {/* Icono Arrow */}
+                        <div className="hidden sm:flex text-slate-300">
+                            <ArrowRight size={24} />
+                        </div>
+
+                        {/* Estrategia */}
+                        <div className="flex-1 w-full relative z-10">
+                            <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+                                Nuevo Aporte Total
+                            </p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-2xl lg:text-3xl font-bold text-emerald-600">{formatCOP(metrics.monthlyTotalEffort)}</h3>
+                                <span className="text-xs text-emerald-600/60 font-medium">/mes</span>
+                            </div>
+                            <p className="text-xs text-emerald-600/70 mt-1 pl-4">Incluye tu abono inteligente</p>
+                        </div>
+
+                        {/* Esfuerzo */}
+                        <div className="w-full sm:w-auto bg-slate-50 rounded-xl p-4 border border-slate-100 min-w-[200px]">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-slate-500 text-xs font-bold">Esfuerzo Adicional</span>
+                                <TrendingUp size={16} className="text-amber-500" />
+                            </div>
+                            <div className="flex items-end gap-1 mb-2">
+                                <span className="text-2xl font-black text-slate-800">+{metrics.effortIncreasePct.toFixed(1)}%</span>
+                                <span className="text-xs text-slate-500 font-medium mb-1.5">vs cuota inicial</span>
+                            </div>
+                            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                <div className="bg-amber-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(metrics.effortIncreasePct, 100)}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Gráfica */}
                     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
@@ -682,94 +742,213 @@
             );
         };
 
-        const LegalGenerator = () => {
+        const LegalGenerator = ({ inputs }) => {
             const [type, setType] = useState("plazo"); 
+            const [mode, setMode] = useState("template"); // 'template' | 'custom'
+            const [personalData, setPersonalData] = useState({
+                name: "",
+                cc: "",
+                bank: "",
+                creditNumber: "",
+                city: "Bogotá D.C."
+            });
+
             const letterRef = useRef(null);
 
             const handleCopy = () => {
                 if (letterRef.current) {
                     const text = letterRef.current.innerText;
                     navigator.clipboard.writeText(text);
-                    alert("Texto copiado al portapapeles");
+                    alert("Texto de la carta copiado correctamente.");
                 }
             };
 
+            const handlePrint = () => {
+                window.print();
+            };
+
+            const handleChangeData = (field, value) => {
+                setPersonalData(prev => ({...prev, [field]: value}));
+            };
+
+            const currentDate = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+
             return (
                 <div className="max-w-4xl mx-auto space-y-6 pb-24 lg:pb-0 animate-in fade-in">
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start gap-3">
-                        <ShieldCheck className="w-6 h-6 text-amber-600 shrink-0" />
-                        <div>
-                            <h4 className="font-bold text-amber-800 text-sm">Ley de Vivienda 546 de 1999</h4>
-                            <p className="text-amber-700 text-xs mt-1 leading-relaxed">
-                                En Colombia, los bancos <strong>deben aceptar abonos a capital</strong> sin penalidad. La opción inteligente es reducir plazo: pagas la misma cuota pero terminas mucho antes.
+                    
+                    {/* Sección Educativa Ley 546 */}
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 relative overflow-hidden no-print">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <ShieldCheck size={120} className="text-amber-600"/>
+                        </div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                                <ShieldCheck className="w-6 h-6 text-amber-700" />
+                                <h2 className="text-lg font-bold text-amber-900">Tus Derechos: Ley de Vivienda 546 de 1999</h2>
+                            </div>
+                            <p className="text-amber-800 text-sm leading-relaxed mb-4 max-w-2xl">
+                                En Colombia, los deudores de créditos hipotecarios tienen el <strong>derecho irrenunciable</strong> a realizar prepagos totales o parciales en cualquier momento, <strong>sin ninguna penalidad</strong>.
                             </p>
+                            <div className="bg-white/60 p-4 rounded-xl border border-amber-200/50 mb-4 text-sm text-slate-700 italic">
+                                "Los créditos de vivienda podrán prepagarse total o parcialmente en cualquier momento sin penalidad alguna. En caso de prepagos parciales, el deudor tendrá derecho a elegir si el monto abonado disminuye el valor de la cuota o el plazo de la obligación."
+                                <br/>
+                                <span className="text-xs font-bold text-amber-700 not-italic mt-2 block">— Artículo 17, Numeral 8.</span>
+                            </div>
+                            <a 
+                                href="https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=398" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-xs font-bold text-amber-700 hover:text-amber-900 hover:underline"
+                            >
+                                Leer Ley Completa <ExternalLink size={12} className="ml-1"/>
+                            </a>
                         </div>
                     </div>
 
                     <div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                            <h2 className="text-xl font-bold text-slate-800">Generador de Solicitud</h2>
-                            <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto">
-                                <button 
-                                    onClick={() => setType("plazo")}
-                                    className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all ${type === 'plazo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                                >
-                                    Reducir Plazo
-                                </button>
-                                <button 
-                                    onClick={() => setType("cuota")}
-                                    className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all ${type === 'cuota' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
-                                >
-                                    Reducir Cuota
-                                </button>
+                        {/* Controles de Configuración (No se imprimen) */}
+                        <div className="no-print space-y-6 mb-8 border-b border-slate-100 pb-8">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <h2 className="text-xl font-bold text-slate-800">Generador de Solicitud Formal</h2>
+                                <div className="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto">
+                                    <button 
+                                        onClick={() => setType("plazo")}
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all ${type === 'plazo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        Reducir Plazo
+                                    </button>
+                                    <button 
+                                        onClick={() => setType("cuota")}
+                                        className={`flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-all ${type === 'cuota' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                    >
+                                        Reducir Cuota
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* Toggle de Modo */}
+                            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <span className="text-sm font-medium text-slate-600">Tipo de Carta:</span>
+                                <label className="flex items-center cursor-pointer gap-2">
+                                    <input type="radio" name="mode" className="accent-blue-600" checked={mode === 'template'} onChange={() => setMode('template')} />
+                                    <span className="text-sm text-slate-700">Plantilla General</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer gap-2">
+                                    <input type="radio" name="mode" className="accent-blue-600" checked={mode === 'custom'} onChange={() => setMode('custom')} />
+                                    <span className="text-sm text-slate-700 font-bold text-blue-700">Con mis Datos y Estrategia</span>
+                                </label>
+                            </div>
+
+                            {/* Formulario de Datos (Visible si mode === 'custom') */}
+                            {mode === 'custom' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500">Nombre Completo</label>
+                                        <div className="relative">
+                                            <User size={14} className="absolute left-3 top-3 text-slate-400"/>
+                                            <input type="text" className="w-full pl-9 p-2 border border-slate-200 rounded-lg text-sm" placeholder="Tu nombre" value={personalData.name} onChange={e => handleChangeData('name', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500">Cédula (C.C.)</label>
+                                        <div className="relative">
+                                            <FileText size={14} className="absolute left-3 top-3 text-slate-400"/>
+                                            <input type="text" className="w-full pl-9 p-2 border border-slate-200 rounded-lg text-sm" placeholder="123456789" value={personalData.cc} onChange={e => handleChangeData('cc', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500">Banco / Entidad</label>
+                                        <div className="relative">
+                                            <Building2 size={14} className="absolute left-3 top-3 text-slate-400"/>
+                                            <input type="text" className="w-full pl-9 p-2 border border-slate-200 rounded-lg text-sm" placeholder="Banco..." value={personalData.bank} onChange={e => handleChangeData('bank', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500">Número de Crédito</label>
+                                        <div className="relative">
+                                            <CreditCard size={14} className="absolute left-3 top-3 text-slate-400"/>
+                                            <input type="text" className="w-full pl-9 p-2 border border-slate-200 rounded-lg text-sm" placeholder="XXXX-XXXX..." value={personalData.creditNumber} onChange={e => handleChangeData('creditNumber', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500">Ciudad</label>
+                                        <input type="text" className="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="Ciudad" value={personalData.city} onChange={e => handleChangeData('city', e.target.value)} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Contenedor con scroll para simular papel en móvil */}
-                        <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-0 md:bg-transparent mb-6 border border-slate-100 md:border-0">
-                            <div ref={letterRef} className="font-serif text-slate-800 leading-relaxed min-w-[600px] md:min-w-0 md:max-w-[21cm] mx-auto bg-white min-h-[20cm] p-[2cm] shadow-sm md:border border-slate-100 relative text-justify text-sm">
-                                <p className="text-right mb-8">Ciudad y Fecha: _________________</p>
+                        {/* HOJA DE CARTA - VISUALIZACIÓN */}
+                        <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-8 md:bg-gray-100 mb-6 border border-slate-200 print:border-0 print:p-0 print:bg-white print:m-0">
+                            <div ref={letterRef} className="letter-paper font-serif text-slate-900 leading-relaxed max-w-[21.59cm] mx-auto bg-white min-h-[27.94cm] p-[2.5cm] shadow-xl md:border border-slate-200 relative text-justify text-[11pt] print:shadow-none print:w-full">
                                 
-                                <p className="mb-6">
-                                    Señores<br/>
-                                    <strong>Dpto. de Cartera / Servicio al Cliente</strong><br/>
-                                    [NOMBRE DEL BANCO]<br/>
-                                    E. S. D.
+                                <p className="mb-8 text-right">
+                                    {mode === 'custom' && personalData.city ? personalData.city : "Ciudad"}, {currentDate}
                                 </p>
                                 
+                                <p className="mb-2">Señores</p>
+                                <p className="font-bold uppercase mb-1">{mode === 'custom' && personalData.bank ? personalData.bank : "[NOMBRE DEL BANCO]"}</p>
                                 <p className="mb-6">
-                                    <strong>Referencia:</strong> Solicitud irrevocable de aplicación de prepago a capital.<br/>
-                                    <strong>Crédito Hipotecario No:</strong> _________________
+                                    Departamento de Cartera Hipotecaria / Servicio al Cliente<br/>
+                                    Ciudad
                                 </p>
+                                
+                                <div className="mb-8 font-bold text-right border-t border-b border-slate-100 py-2">
+                                    <p>Referencia: Solicitud de Aplicación de Abono Extraordinario a Capital</p>
+                                    <p>Crédito Hipotecario No: {mode === 'custom' && personalData.creditNumber ? personalData.creditNumber : "_________________"}</p>
+                                </div>
                                 
                                 <p className="mb-4">Respetados señores:</p>
 
                                 <p className="mb-4">
-                                    En mi calidad de titular de la obligación de la referencia, y amparado en la <strong>Ley 546 de 1999</strong>, informo que he realizado un abono extraordinario.
+                                    Yo, <strong>{mode === 'custom' && personalData.name ? personalData.name.toUpperCase() : "__________________________________"}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>{mode === 'custom' && personalData.cc ? personalData.cc : "_________________"}</strong>, en mi calidad de titular de la obligación de la referencia, me dirijo a ustedes para lo siguiente:
+                                </p>
+
+                                <p className="mb-4">
+                                    He realizado (o realizaré) un abono extraordinario a capital por valor de 
+                                    <strong> {mode === 'custom' && inputs.extraMonthly > 0 ? formatCOP(inputs.extraMonthly) : "_________________ (Valor del Abono)"}</strong>.
                                 </p>
                                 
-                                <div className={`my-6 p-4 border-l-4 italic bg-slate-50 ${type === 'plazo' ? 'border-emerald-500' : 'border-blue-500'}`}>
-                                    {type === 'plazo' 
-                                        ? "SOLICITO que este dinero se aplique a capital para REDUCIR EL PLAZO (tiempo), manteniendo la cuota mensual actual."
-                                        : "SOLICITO que este dinero se aplique a capital para REDUCIR EL VALOR DE LA CUOTA, manteniendo el plazo actual."
-                                    }
+                                <p className="mb-4">
+                                    De conformidad con lo establecido en la <strong>Ley 546 de 1999, Artículo 17, Numeral 8</strong>, la cual faculta a los deudores de créditos de vivienda para realizar prepagos totales o parciales en cualquier momento sin penalidad alguna, y elegir el destino de dicho abono; manifiesto mi voluntad irrevocable de que este dinero sea aplicado de la siguiente manera:
+                                </p>
+                                
+                                <div className={`my-6 p-4 border-l-4 bg-slate-50 print:bg-white print:border-black ${type === 'plazo' ? 'border-emerald-600' : 'border-blue-600'}`}>
+                                    <p className="font-bold text-center uppercase mb-2">
+                                        {type === 'plazo' ? "REDUCCIÓN DE PLAZO (TIEMPO)" : "REDUCCIÓN DE CUOTA (VALOR MENSUAL)"}
+                                    </p>
+                                    <p className="italic text-sm">
+                                        {type === 'plazo' 
+                                            ? "Solicito expresamente que el abono a capital se destine a disminuir el número de cuotas pendientes (tiempo restante) del crédito, manteniendo el valor de la cuota mensual actual constante."
+                                            : "Solicito expresamente que el abono a capital se destine a disminuir el valor de la cuota mensual futura, manteniendo el plazo (tiempo restante) actual del crédito constante."
+                                        }
+                                    </p>
+                                </div>
+
+                                <p className="mb-8">
+                                    Agradezco confirmar la aplicación correcta de este abono bajo las condiciones solicitadas y enviarme el nuevo plan de pagos proyectado a mi dirección de correspondencia o correo electrónico registrado.
+                                </p>
+                                
+                                <p className="mt-12">Cordialmente,</p>
+                                <br/><br/><br/>
+                                <div className="border-t border-slate-800 w-64 pt-2">
+                                    <p className="font-bold">{mode === 'custom' && personalData.name ? personalData.name : "__________________________________"}</p>
+                                    <p>C.C. {mode === 'custom' && personalData.cc ? personalData.cc : "_________________"}</p>
+                                    <p>Titular</p>
                                 </div>
                                 
-                                <p className="mt-8">Cordialmente,</p>
-                                <br/><br/>
-                                <div className="border-t border-slate-800 w-48 pt-2">
-                                    <p>Firma: ___________________</p>
-                                    <p>C.C. ___________________</p>
+                                <div className="mt-12 text-[10px] text-slate-400 text-center border-t border-slate-100 pt-4 print:hidden">
+                                    Generado con CrediMaster Pro - Herramienta de Libertad Financiera
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={handleCopy} className="flex items-center justify-center px-4 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-medium">
-                                <Copy className="w-4 h-4 mr-2" /> Copiar
+                        <div className="grid grid-cols-2 gap-3 no-print">
+                            <button onClick={handleCopy} className="flex items-center justify-center px-4 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-medium transition-colors">
+                                <Copy className="w-4 h-4 mr-2" /> Copiar Texto
                             </button>
-                            <button onClick={() => window.print()} className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-medium">
-                                <Printer className="w-4 h-4 mr-2" /> Imprimir
+                            <button onClick={handlePrint} className="flex items-center justify-center px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 font-medium transition-colors">
+                                <Printer className="w-4 h-4 mr-2" /> Imprimir / PDF
                             </button>
                         </div>
                     </div>
@@ -904,7 +1083,7 @@
                                 </div>
                             </div>
                         );
-                    case 'legal': return <LegalGenerator />;
+                    case 'legal': return <LegalGenerator inputs={inputs} />;
                     default: return null;
                 }
             };
@@ -1017,4 +1196,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
+    </html>
