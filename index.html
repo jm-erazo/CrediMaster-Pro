@@ -38,7 +38,6 @@
         }
     </style>
 
-    <!-- Import Map: Define dónde buscar las librerías 'react', 'recharts', etc. -->
     <script type="importmap">
     {
         "imports": {
@@ -53,7 +52,6 @@
 <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
-    <!-- Tu código React original, usando data-type="module" para soportar imports -->
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useMemo, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -64,7 +62,7 @@
             List, ChevronRight, Info, Printer, Sparkles, Bot, Settings, 
             FileText, TrendingDown, TrendingUp, Share2, Copy, Calculator, PiggyBank,
             Coffee, Home, Car, ShoppingBag, Zap, ExternalLink, User, Building2, CreditCard,
-            RotateCcw, CheckCircle2, Code2, Coins, TrendingUp as TrendingUpIcon
+            RotateCcw, CheckCircle2, Code2, Coins, TrendingUp as TrendingUpIcon, FileSearch, Receipt
         } from 'lucide-react';
         
         import { 
@@ -72,16 +70,13 @@
             ResponsiveContainer, AreaChart, Area, Cell, Pie, PieChart as RechartsPieChart, LineChart, Line, Legend
         } from 'recharts';
 
-        // --- CONFIGURACIÓN ---
-        const apiKey = ""; 
-
         // --- UTILIDADES ---
         const formatCurrency = (value, decimals = 2) => {
             return new Intl.NumberFormat('es-CO', {
                 style: 'currency',
                 currency: 'COP',
-                minimumFractionDigits: decimals,
-                maximumFractionDigits: decimals,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
             }).format(value || 0);
         };
 
@@ -92,7 +87,6 @@
             }).format(value || 0);
         };
 
-        // Hook debounce para optimizar rendimiento
         function useDebounce(value, delay) {
             const [debouncedValue, setDebouncedValue] = useState(value);
             useEffect(() => {
@@ -107,45 +101,39 @@
         }
 
         // --- COMPONENTES UI GENÉRICOS ---
-
-        // Input numérico mejorado para soportar decimales reales
         const NumericInput = ({ 
             label, 
             value, 
             onChange, 
-            type = 'currency', // 'currency' | 'percent' | 'number' | 'uvr'
+            type = 'currency', 
             className = '', 
             icon: Icon, 
             placeholder = "0", 
             highlight = false,
-            decimals = 2 
+            decimals = 2,
+            readOnly = false,
+            negative = false 
         }) => {
-            // Estado local para lo que escribe el usuario antes de blur
             const [inputValue, setInputValue] = useState('');
 
-            // Sincronizar cuando el prop 'value' cambia externamente
             useEffect(() => {
                 if (value === '' || value === null || value === undefined) {
                     setInputValue('');
                 } else {
-                    // Formatear visualmente al cargar
                     const opts = { minimumFractionDigits: 0, maximumFractionDigits: decimals };
                     setInputValue(new Intl.NumberFormat('es-CO', opts).format(value));
                 }
             }, [value, decimals]);
 
             const handleFocus = () => {
-                // Al enfocar, mostrar el valor sin formato (o formato simple) para editar fácil
-                if (value !== 0 && value) {
+                if (!readOnly && value !== 0 && value) {
                     setInputValue(value.toString().replace('.', ','));
-                } else {
+                } else if (!readOnly) {
                     setInputValue('');
                 }
             };
 
             const handleBlur = () => {
-                // Al salir, el useEffect se encargará de formatear de nuevo el prop value
-                // Forzamos el reformateo inmediato visual
                 if (value !== '' && value !== null) {
                     const opts = { minimumFractionDigits: 0, maximumFractionDigits: decimals };
                     setInputValue(new Intl.NumberFormat('es-CO', opts).format(value));
@@ -153,47 +141,37 @@
             };
 
             const handleChange = (e) => {
+                if (readOnly) return;
                 let raw = e.target.value;
-                // Permitir solo números y una coma
-                // 1. Reemplazar puntos por nada (si usuario usa puntos como miles, los ignoramos al escribir manual)
-                //    O si usa punto como decimal, lo volvemos coma.
-                //    Estandaricemos: usuario escribe 1234,56
-                
-                // Filtro básico: permitir dígitos y comas
                 if (/^[0-9.,]*$/.test(raw)) {
                      setInputValue(raw);
-                     
-                     // Convertir a número para el padre
-                     // Eliminar puntos de miles (si los hubiera pegado) y cambiar coma por punto decimal JS
                      let numStr = raw.replace(/\./g, '').replace(',', '.');
-                     
-                     // Caso borde: usuario escribe solo "," o vacio
                      if (numStr === '' || numStr === '.') {
                          onChange(0);
                          return;
                      }
-
                      const parsed = parseFloat(numStr);
-                     if (!isNaN(parsed)) {
-                         onChange(parsed);
-                     }
+                     if (!isNaN(parsed)) onChange(parsed);
                 }
             };
 
             return (
-                <div className={`space-y-2 ${className}`}>
-                    <label className={`text-xs font-bold uppercase tracking-wide flex flex-wrap justify-between gap-1 items-center ${highlight ? 'text-indigo-600' : 'text-slate-500'}`}>
+                <div className={`space-y-2 ${className} ${readOnly ? 'opacity-70 pointer-events-none' : ''}`}>
+                    <label className={`text-xs font-bold uppercase tracking-wide flex flex-wrap justify-between gap-1 items-center ${highlight ? 'text-indigo-600' : (negative ? 'text-emerald-600' : 'text-slate-500')}`}>
                         <span className="flex items-center gap-1.5">
-                            {Icon && <Icon size={14} className={highlight ? 'text-indigo-500' : 'text-slate-400'} />}
+                            {Icon && <Icon size={14} className={highlight ? 'text-indigo-500' : (negative ? 'text-emerald-500' : 'text-slate-400')} />}
                             {label}
                         </span>
                         {type === 'percent' && <span className="text-slate-400 font-normal whitespace-nowrap">% E.A.</span>}
+                        {type === 'points' && <span className="text-slate-400 font-normal whitespace-nowrap">Puntos %</span>}
                         {type === 'uvr' && <span className="text-slate-400 font-normal whitespace-nowrap">Unidad</span>}
                     </label>
                     <div className="relative group">
                         {type === 'currency' && (
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <span className={`font-semibold transition-colors ${highlight ? 'text-indigo-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}>$</span>
+                                <span className={`font-semibold transition-colors ${negative ? 'text-emerald-500' : (highlight ? 'text-indigo-500' : 'text-slate-400')}`}>
+                                    {negative ? '-' : ''}$
+                                </span>
                             </div>
                         )}
                         <input
@@ -203,10 +181,18 @@
                             onChange={handleChange}
                             onFocus={handleFocus}
                             onBlur={handleBlur}
-                            className={`block w-full rounded-xl p-3 text-sm font-bold focus:ring-2 shadow-sm transition-all outline-none border ${type === 'currency' ? 'pl-7' : ''} ${highlight ? 'bg-indigo-50 border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-200' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 focus:ring-blue-200 focus:bg-white'}`}
+                            readOnly={readOnly}
+                            className={`block w-full rounded-xl p-3 text-sm font-bold focus:ring-2 shadow-sm transition-all outline-none border 
+                                ${type === 'currency' ? 'pl-7' : ''} 
+                                ${negative 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 focus:border-emerald-500 focus:ring-emerald-200' 
+                                    : (highlight 
+                                        ? 'bg-indigo-50 border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-200' 
+                                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500 focus:ring-blue-200 focus:bg-white')}
+                                ${readOnly ? 'bg-slate-100 text-slate-500 border-slate-200' : ''}`}
                             placeholder={placeholder}
                         />
-                        {type === 'percent' && (
+                        {(type === 'percent' || type === 'points') && (
                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                 <span className="text-slate-400 font-semibold">%</span>
                             </div>
@@ -221,192 +207,256 @@
                 <div className="text-sm font-medium text-slate-700 leading-tight select-none pr-2">
                     {label}
                 </div>
-                <div 
-                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${checked ? activeColor : 'bg-slate-300'}`}
-                >
+                <div className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${checked ? activeColor : 'bg-slate-300'}`}>
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
             </div>
         );
 
-        // Componente reutilizable de Inputs
-        const CreditParametersForm = ({ inputs, handleInputChange, className = "" }) => (
-            <div className={`space-y-6 ${className}`}>
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
-                            <Settings size={16} />
+        // --- COMPONENTE INPUTS (MEJORADO) ---
+        const CreditParametersForm = ({ inputs, handleInputChange, setInputs, className = "" }) => {
+            
+            // --- NUEVA LÓGICA: Sincronización UVR/Pesos ---
+            const handleUVRUnitBalanceChange = (newUVRBalance) => {
+                // Si usuario edita unidades, calculamos pesos exactos
+                setInputs(prev => ({
+                    ...prev,
+                    loanAmountUVR: newUVRBalance,
+                    loanAmount: newUVRBalance * prev.uvrValue
+                }));
+            };
+
+            const handleUVRValueChange = (newUVRValue) => {
+                setInputs(prev => ({
+                    ...prev,
+                    uvrValue: newUVRValue,
+                    loanAmount: prev.loanAmountUVR * newUVRValue // Recalcular pesos
+                }));
+            };
+
+            const handlePesoBalanceChange = (newPesoBalance) => {
+                // Si edita pesos (en modo normal)
+                setInputs(prev => ({
+                    ...prev,
+                    loanAmount: newPesoBalance,
+                    loanAmountUVR: prev.isUVR ? (newPesoBalance / prev.uvrValue) : 0
+                }));
+            };
+
+            return (
+                <div className={`space-y-6 ${className}`}>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                                <Settings size={16} />
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Datos del Crédito</h3>
                         </div>
-                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Datos del Crédito</h3>
-                    </div>
 
-                    {/* Selector Tipo de Crédito */}
-                    <div className="bg-slate-100 p-1 rounded-xl flex mb-4">
-                        <button 
-                            onClick={() => handleInputChange('isUVR', false)}
-                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!inputs.isUVR ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            PESOS (Tasa Fija)
-                        </button>
-                        <button 
-                            onClick={() => handleInputChange('isUVR', true)}
-                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${inputs.isUVR ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            UVR (Indexado inflación)
-                        </button>
-                    </div>
+                        {/* Selector Tipo de Crédito */}
+                        <div className="bg-slate-100 p-1 rounded-xl flex mb-4">
+                            <button 
+                                onClick={() => handleInputChange('isUVR', false)}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!inputs.isUVR ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                            >
+                                PESOS (Tasa Fija)
+                            </button>
+                            <button 
+                                onClick={() => handleInputChange('isUVR', true)}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${inputs.isUVR ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}
+                            >
+                                UVR (Indexado)
+                            </button>
+                        </div>
 
-                    {inputs.isUVR && (
-                        <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl space-y-3 animate-in fade-in">
-                            <div className="flex items-center gap-2 text-purple-800 font-bold text-xs uppercase mb-1">
-                                <TrendingUpIcon size={14} /> Variables UVR
+                        {inputs.isUVR && (
+                            <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl space-y-3 animate-in fade-in relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-2 opacity-5"><FileSearch size={100}/></div>
+                                <div className="flex items-center gap-2 text-purple-800 font-bold text-xs uppercase mb-1 relative z-10">
+                                    <FileSearch size={14} /> Variables UVR (Exactitud Extracto)
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
+                                    <NumericInput 
+                                        label="Saldo Capital (Unidades UVR)" 
+                                        type="uvr"
+                                        value={inputs.loanAmountUVR} 
+                                        onChange={handleUVRUnitBalanceChange}
+                                        decimals={4}
+                                        highlight={true}
+                                        placeholder="Ej: 45032.1234"
+                                    />
+                                    <NumericInput 
+                                        label="Valor UVR (Día Corte)" 
+                                        type="uvr"
+                                        value={inputs.uvrValue} 
+                                        onChange={handleUVRValueChange}
+                                        decimals={4}
+                                    />
+                                </div>
+                                <div className="relative z-10">
+                                     <NumericInput 
+                                        label="Inflación Estimada (Anual)" 
+                                        type="percent"
+                                        value={inputs.inflation} 
+                                        onChange={(v) => handleInputChange('inflation', v)}
+                                        decimals={2}
+                                    />
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <NumericInput 
-                                    label="Valor Unidad UVR Hoy" 
-                                    type="uvr"
-                                    value={inputs.uvrValue} 
-                                    onChange={(v) => handleInputChange('uvrValue', v)}
-                                    decimals={4} 
-                                />
-                                <NumericInput 
-                                    label="Inflación Estimada (Anual)" 
-                                    type="percent"
-                                    value={inputs.inflation} 
-                                    onChange={(v) => handleInputChange('inflation', v)}
-                                    decimals={2}
-                                />
+                        )}
+                        
+                        <NumericInput 
+                            label={inputs.isUVR ? "Saldo Capital (Pesos Calculado)" : "Saldo Deuda Actual (Pesos)"}
+                            value={inputs.loanAmount} 
+                            onChange={handlePesoBalanceChange}
+                            readOnly={inputs.isUVR} // En UVR se calcula automático para evitar errores
+                            highlight={!inputs.isUVR}
+                        />
+                        
+                        <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative">
+                            <div className="absolute -top-2 right-2 bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                Recomendado
                             </div>
-                            <p className="text-[10px] text-purple-600/80 leading-tight">
-                                * El crédito en UVR aumenta su saldo en pesos con la inflación. Simulamos proyectando el crecimiento de la UVR.
+                            <NumericInput 
+                                label="Valor Cuota Extracto Total (Pesos)" 
+                                value={inputs.currentQuota} 
+                                onChange={(v) => handleInputChange('currentQuota', v)} 
+                                highlight={true}
+                                icon={CheckCircle2}
+                                placeholder="Ej: 2.500.000"
+                            />
+                            <p className="text-[10px] text-indigo-500/80 mt-1.5 leading-tight px-1">
+                                Ingresa el valor exacto de tu factura para calibrar el simulador.
                             </p>
                         </div>
-                    )}
-                    
-                    <NumericInput 
-                        label="Saldo Deuda Actual (Pesos)" 
-                        value={inputs.loanAmount} 
-                        onChange={(v) => handleInputChange('loanAmount', v)} 
-                    />
-                    
-                    {/* CUOTA REAL / MANUAL */}
-                    <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 relative">
-                        <div className="absolute -top-2 right-2 bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                            Recomendado
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <NumericInput 
+                                label={inputs.isUVR ? "Tasa E.A. (Full)" : "Tasa E.A."} 
+                                type="percent"
+                                value={inputs.rateEA} 
+                                onChange={(v) => handleInputChange('rateEA', v)} 
+                            />
+                            <NumericInput 
+                                label="Plazo Restante (Meses)" 
+                                type="number" 
+                                value={inputs.months} 
+                                onChange={(v) => handleInputChange('months', v)}
+                                decimals={0} 
+                            />
+                        </div>
+
+                        {/* --- NUEVA SECCIÓN: FRECH --- */}
+                        <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 space-y-3">
+                            <ToggleSwitch 
+                                label={<span className="text-xs font-bold text-emerald-800">Tiene Subsidio FRECH / Ecobertura?</span>}
+                                checked={inputs.hasFrech}
+                                onChange={(v) => handleInputChange('hasFrech', v)}
+                            />
+                            {inputs.hasFrech && (
+                                <div className="animate-in fade-in">
+                                    <NumericInput 
+                                        label="Puntos de Subsidio (Sobre Tasa)"
+                                        type="points"
+                                        value={inputs.frechPoints} 
+                                        onChange={(v) => handleInputChange('frechPoints', v)}
+                                        decimals={2}
+                                        negative={true}
+                                        placeholder="Ej: 4.0 o 5.0"
+                                    />
+                                    <p className="text-[10px] text-emerald-600/80 mt-1 leading-tight px-1">
+                                        * El sistema calculará el interés full y restará este porcentaje.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <NumericInput 
+                            label="Seguros / Otros (Mensual Pesos)" 
+                            value={inputs.insurance} 
+                            onChange={(v) => handleInputChange('insurance', v)} 
+                        />
+                    </div>
+
+                    <div className="bg-emerald-50/80 p-5 rounded-2xl border border-emerald-100 space-y-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
+                                <Wallet size={16} />
+                            </div>
+                            <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wide">Tu Estrategia</h3>
                         </div>
                         <NumericInput 
-                            label="Valor Cuota Extracto Total (Pesos)" 
-                            value={inputs.currentQuota} 
-                            onChange={(v) => handleInputChange('currentQuota', v)} 
-                            highlight={true}
-                            icon={CheckCircle2}
-                            placeholder="Ej: 2.500.000"
+                            label="Abono Extra Mensual (Pesos)" 
+                            value={inputs.extraMonthly} 
+                            onChange={(v) => handleInputChange('extraMonthly', v)} 
+                            className="[&_input]:bg-white [&_input]:border-emerald-200 [&_input]:text-emerald-800 [&_input]:focus:ring-emerald-200 [&_input]:focus:border-emerald-500"
                         />
-                        <p className="text-[10px] text-indigo-500/80 mt-1.5 leading-tight px-1">
-                            Ingresa el valor exacto de tu factura para calibrar el simulador.
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <NumericInput 
-                            label={inputs.isUVR ? "Tasa UVR + %" : "Tasa E.A."} 
-                            type="percent"
-                            value={inputs.rateEA} 
-                            onChange={(v) => handleInputChange('rateEA', v)} 
+                        <ToggleSwitch 
+                            label={<span className="text-xs font-semibold text-slate-600 block">Usar Primas (Jun/Dic) <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Duplica el abono extra</span></span>}
+                            checked={inputs.usePrimas}
+                            onChange={(v) => handleInputChange('usePrimas', v)}
                         />
                         <NumericInput 
-                            label="Plazo Restante (Meses)" 
-                            type="number" 
-                            value={inputs.months} 
-                            onChange={(v) => handleInputChange('months', v)}
-                            decimals={0} 
+                            label="Abono Único Inicial (Pesos)" 
+                            value={inputs.oneTimePayment} 
+                            onChange={(v) => handleInputChange('oneTimePayment', v)} 
                         />
                     </div>
-                    <NumericInput 
-                        label="Seguros / Otros (Mensual Pesos)" 
-                        value={inputs.insurance} 
-                        onChange={(v) => handleInputChange('insurance', v)} 
-                    />
                 </div>
+            );
+        };
 
-                <div className="bg-emerald-50/80 p-5 rounded-2xl border border-emerald-100 space-y-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg">
-                            <Wallet size={16} />
-                        </div>
-                        <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wide">Tu Estrategia</h3>
-                    </div>
-                    <NumericInput 
-                        label="Abono Extra Mensual (Pesos)" 
-                        value={inputs.extraMonthly} 
-                        onChange={(v) => handleInputChange('extraMonthly', v)} 
-                        className="[&_input]:bg-white [&_input]:border-emerald-200 [&_input]:text-emerald-800 [&_input]:focus:ring-emerald-200 [&_input]:focus:border-emerald-500"
-                    />
-                    <ToggleSwitch 
-                        label={<span className="text-xs font-semibold text-slate-600 block">Usar Primas (Jun/Dic) <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Duplica el abono extra</span></span>}
-                        checked={inputs.usePrimas}
-                        onChange={(v) => handleInputChange('usePrimas', v)}
-                    />
-                    <NumericInput 
-                        label="Abono Único Inicial (Pesos)" 
-                        value={inputs.oneTimePayment} 
-                        onChange={(v) => handleInputChange('oneTimePayment', v)} 
-                    />
-                </div>
-            </div>
-        );
-
-        // --- LÓGICA DE NEGOCIO ---
+        // --- LÓGICA DE NEGOCIO (ACTUALIZADA FRECH + UVR EXACTO) ---
 
         const calculateEngine = (params) => {
             const { 
-                loanAmount, rateEA, months, insurance, extraMonthly, 
+                loanAmount, loanAmountUVR, rateEA, months, insurance, extraMonthly, 
                 usePrimas, oneTimePayment, currentQuota, 
-                isUVR, uvrValue, inflation 
+                isUVR, uvrValue, inflation,
+                hasFrech, frechPoints // Nuevos Params
             } = params;
             
             if (!loanAmount || !rateEA || (isUVR && !uvrValue)) return null;
 
-            // Tasas Efectivas a Nominales Mensuales
-            const rateMonthly = Math.pow(1 + rateEA / 100, 1 / 12) - 1;
+            // 1. Definición de Tasas
+            const rateMonthlyFull = Math.pow(1 + rateEA / 100, 1 / 12) - 1;
+            
+            // Tasa Cliente (Si hay FRECH, restamos puntos a la EA)
+            const clientRateEA = hasFrech ? Math.max(0, rateEA - frechPoints) : rateEA;
+            const rateMonthlyClient = Math.pow(1 + clientRateEA / 100, 1 / 12) - 1;
+
             const inflationMonthly = isUVR ? (Math.pow(1 + inflation / 100, 1 / 12) - 1) : 0;
 
             // --- INICIALIZACIÓN ---
+            // Prioridad: Si es UVR y tenemos unidades exactas, usamos eso. Si no, calculamos.
+            let balanceBaseUVR = isUVR ? (loanAmountUVR > 0 ? loanAmountUVR : loanAmount / uvrValue) : loanAmount;
             
-            // Si es UVR, convertimos el saldo inicial a UVR
-            let balanceBaseUVR = isUVR ? (loanAmount / uvrValue) : loanAmount;
-            let balanceBasePesos = loanAmount;
-            
+            if(isUVR && (!loanAmountUVR || loanAmountUVR === 0)) {
+                balanceBaseUVR = loanAmount / uvrValue;
+            }
+
             let balanceStrategyUVR = balanceBaseUVR;
-            let balanceStrategyPesos = loanAmount;
+            let currentUVR = isUVR ? uvrValue : 1; 
 
-            let currentUVR = isUVR ? uvrValue : 1; // Factor de conversión
-
-            // Cálculo de Cuota Base (Obligatoria)
-            // Para UVR, calculamos la cuota fija EN UVR.
-            // Para Pesos, calculamos la cuota fija EN PESOS.
-            
-            let pmtFixedUnit; // Será UVR o Pesos según el modo
-            let pmtTotalObligatoryDisplay; // Para mostrar en el dashboard (Primer mes)
+            // Cálculo de Cuota Base usando TASA CLIENTE (lo que realmente paga el usuario)
+            let pmtFixedUnit; 
+            let pmtTotalObligatoryDisplay; 
             let isManualQuota = false;
 
             if (currentQuota && currentQuota > insurance) {
-                // Modo Calibrado: Usuario da la cuota en PESOS
                 isManualQuota = true;
                 const quotaWithoutInsurance = currentQuota - insurance;
                 
                 if (isUVR) {
-                    // Convertimos esa cuota inicial a UVR para proyectar
                     pmtFixedUnit = quotaWithoutInsurance / uvrValue;
                 } else {
                     pmtFixedUnit = quotaWithoutInsurance;
                 }
                 pmtTotalObligatoryDisplay = currentQuota;
             } else {
-                // Modo Automático: Fórmula Francesa
                 if (!months) return null;
-                // Fórmula: P * (r * (1+r)^n) / ((1+r)^n - 1)
-                pmtFixedUnit = balanceBaseUVR * (rateMonthly * Math.pow(1 + rateMonthly, months)) / (Math.pow(1 + rateMonthly, months) - 1);
+                // Fórmula Francesa con Tasa Cliente
+                pmtFixedUnit = balanceBaseUVR * (rateMonthlyClient * Math.pow(1 + rateMonthlyClient, months)) / (Math.pow(1 + rateMonthlyClient, months) - 1);
                 
                 const firstMonthPaymentPesos = isUVR 
                     ? (pmtFixedUnit * (uvrValue * (1 + inflationMonthly))) + insurance 
@@ -415,96 +465,63 @@
                 pmtTotalObligatoryDisplay = firstMonthPaymentPesos;
             }
 
-
-            // --- SIMULACIÓN BANCO (SIN ABONOS) ---
-            let totalInterestBasePesos = 0;
-            const scheduleBase = [];
-            let monthCounter = 0;
+            // --- SIMULACIÓN ESTRATEGIA (CON ABONOS + FRECH) ---
+            let schedule = [];
+            let totalInterestPaidPesos = 0; // Neto pagado por cliente
+            let totalFrechBenefitPesos = 0; 
+            let currentMonth = 0;
             const SAFE_LIMIT = 600; 
 
-            // Clonamos variables para el loop
-            let tempBalanceUnit = balanceBaseUVR; // Unit es UVR o Pesos
+            let tempBalanceUnit = balanceStrategyUVR;
             let tempUVR = currentUVR;
 
-            while (tempBalanceUnit > (isUVR ? 0.1 : 100) && monthCounter < SAFE_LIMIT) {
-                monthCounter++;
-                
-                // Actualizar valor UVR si aplica
-                if (isUVR) tempUVR = tempUVR * (1 + inflationMonthly);
-
-                // Interés del mes (Sobre saldo en Unidades)
-                const interestUnit = tempBalanceUnit * rateMonthly;
-                
-                // Capital (Cuota Fija Unitaria - Interés)
-                let capitalUnit = pmtFixedUnit - interestUnit;
-                
-                // Ajuste último mes
-                if (capitalUnit > tempBalanceUnit) capitalUnit = tempBalanceUnit;
-                if (capitalUnit < 0) capitalUnit = 0; // Amortización negativa (UVR mal configurado o tasas extremas)
-
-                tempBalanceUnit -= capitalUnit;
-
-                // Acumuladores en Pesos (Para comparar peras con peras)
-                const interestPesos = isUVR ? interestUnit * tempUVR : interestUnit;
-                totalInterestBasePesos += interestPesos;
-
-                scheduleBase.push({
-                    month: monthCounter,
-                    balancePesos: isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit,
-                    uvrValue: tempUVR
-                });
-            }
-            
-            const totalMonthsOriginal = scheduleBase.length;
-            // Estimado total pago original en pesos (aprox)
-            // Nota: En UVR esto es complejo porque los seguros también pueden subir o ser fijos. Asumimos fijos en pesos por simpleza UI.
-
-
-            // --- SIMULACIÓN ESTRATEGIA (CON ABONOS) ---
-            let schedule = [];
-            let totalInterestStrategyPesos = 0;
-            let totalInsurancePesos = 0;
-            let currentMonth = 0;
-            
-            // Reiniciamos variables
-            tempBalanceUnit = balanceStrategyUVR;
-            tempUVR = isUVR ? uvrValue : 1;
-
+            // Gráfica
             const graphData = [];
             graphData.push({
                 mes: 0,
-                deudaBanco: Math.round(loanAmount),
-                deudaEstrategia: Math.round(loanAmount),
+                deudaBanco: Math.round(isUVR ? balanceBaseUVR * uvrValue : loanAmount),
+                deudaEstrategia: Math.round(isUVR ? balanceStrategyUVR * uvrValue : loanAmount),
             });
 
-            while (tempBalanceUnit > (isUVR ? 0.1 : 100) && currentMonth < SAFE_LIMIT) {
+            // Simulación Banco paralela (simple)
+            let balanceBancoUnit = balanceBaseUVR;
+            let uvrBanco = currentUVR;
+            const scheduleBanco = [];
+            let totalInterestBancoPesos = 0; // Neto cliente sin abonos
+
+            while (tempBalanceUnit > (isUVR ? 0.5 : 100) && currentMonth < SAFE_LIMIT) {
                 currentMonth++;
                 
-                // 1. Proyección UVR
-                if (isUVR) tempUVR = tempUVR * (1 + inflationMonthly);
+                // 1. Inflación UVR
+                if (isUVR) {
+                    tempUVR = tempUVR * (1 + inflationMonthly);
+                    uvrBanco = uvrBanco * (1 + inflationMonthly);
+                }
                 
-                // 2. Cálculo Interés
-                const interestUnit = tempBalanceUnit * rateMonthly;
-                
-                // 3. Cálculo Capital Ordinario
-                let capitalOrdinaryUnit = pmtFixedUnit - interestUnit;
+                // --- LÓGICA ESTRATEGIA ---
+
+                // 2. Intereses (Sobre saldo en Unidades)
+                const interestFullUnit = tempBalanceUnit * rateMonthlyFull;
+                const interestClientUnit = tempBalanceUnit * rateMonthlyClient;
+                const frechSubsidyUnit = Math.max(0, interestFullUnit - interestClientUnit);
+
+                // 3. Capital Ordinario (Cuota Fija - Interés Cliente)
+                let capitalOrdinaryUnit = pmtFixedUnit - interestClientUnit;
                 if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0;
 
-                // 4. Definir Abonos Extras (Input es en PESOS)
+                // 4. Abonos Extras
                 let paymentExtraPesos = extraMonthly;
                 if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) paymentExtraPesos += extraMonthly; 
                 if (currentMonth === 1) paymentExtraPesos += oneTimePayment;
 
-                // Convertir Extra Pesos a Unidades (UVR o Pesos)
                 let paymentExtraUnit = isUVR ? (paymentExtraPesos / tempUVR) : paymentExtraPesos;
 
-                // 5. Capital Total
+                // 5. Aplicar
                 let capitalTotalUnit = capitalOrdinaryUnit + paymentExtraUnit;
 
-                // Ajuste final saldo
+                // Ajuste fin de deuda
                 if (capitalTotalUnit > tempBalanceUnit) {
                     capitalTotalUnit = tempBalanceUnit;
-                    // Ajuste proporcional para visualización
                     if (tempBalanceUnit < capitalOrdinaryUnit) {
                          capitalOrdinaryUnit = tempBalanceUnit;
                          paymentExtraUnit = 0;
@@ -515,77 +532,92 @@
 
                 tempBalanceUnit -= capitalTotalUnit;
                 
-                // Conversiones a Pesos para reporte
-                const interestPesos = isUVR ? interestUnit * tempUVR : interestUnit;
+                // --- LÓGICA BANCO (Comparativo) ---
+                if (balanceBancoUnit > (isUVR ? 0.5 : 100)) {
+                    const intBancoClientUnit = balanceBancoUnit * rateMonthlyClient;
+                    let capBancoUnit = pmtFixedUnit - intBancoClientUnit;
+                    if (capBancoUnit > balanceBancoUnit) capBancoUnit = balanceBancoUnit;
+                    balanceBancoUnit -= capBancoUnit;
+                    totalInterestBancoPesos += (isUVR ? intBancoClientUnit * uvrBanco : intBancoClientUnit);
+                }
+                scheduleBanco.push(isUVR ? balanceBancoUnit * uvrBanco : balanceBancoUnit);
+
+                // --- CONVERSIONES A PESOS (VISUAL) ---
+                const interestFullPesos = isUVR ? interestFullUnit * tempUVR : interestFullUnit;
+                const frechSubsidyPesos = isUVR ? frechSubsidyUnit * tempUVR : frechSubsidyUnit;
+                const interestClientPesos = isUVR ? interestClientUnit * tempUVR : interestClientUnit;
+                
                 const capitalOrdinaryPesos = isUVR ? capitalOrdinaryUnit * tempUVR : capitalOrdinaryUnit;
                 const capitalTotalPesos = isUVR ? capitalTotalUnit * tempUVR : capitalTotalUnit;
                 const paymentExtraAppliedPesos = isUVR ? paymentExtraUnit * tempUVR : paymentExtraUnit;
                 const balancePesos = isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit;
                 
-                // Pago Total Bolsillo
-                const totalPaymentPocketPesos = capitalTotalPesos + interestPesos + insurance;
+                const totalPaymentPocketPesos = capitalTotalPesos + interestClientPesos + insurance;
 
-                totalInterestStrategyPesos += interestPesos;
-                totalInsurancePesos += insurance;
+                totalInterestPaidPesos += interestClientPesos;
+                totalFrechBenefitPesos += frechSubsidyPesos;
 
                 schedule.push({
                     month: currentMonth,
                     paymentTotal: totalPaymentPocketPesos,
                     capitalOrdinary: capitalOrdinaryPesos,
                     capitalTotal: capitalTotalPesos,
-                    interest: interestPesos,
+                    // Campos nuevos para mostrar detalle
+                    interestFull: interestFullPesos,
+                    frechBenefit: frechSubsidyPesos,
+                    interest: interestClientPesos, // Mantengo nombre 'interest' para compatibilidad
+                    interestNet: interestClientPesos, 
+                    
                     insurance: insurance,
                     balance: balancePesos > 1 ? balancePesos : 0,
                     extraApplied: paymentExtraAppliedPesos,
-                    uvrUnitValue: isUVR ? tempUVR : null // Dato extra para la tabla
+                    uvrUnitValue: isUVR ? tempUVR : null
                 });
 
-                // Gráfica
-                const baseData = scheduleBase[currentMonth - 1] || { balancePesos: 0 };
-                if (currentMonth % 3 === 0 || tempBalanceUnit <= (isUVR?0.1:100) || currentMonth === 1) {
+                // Gráfica Sampling
+                if (currentMonth % 3 === 0 || tempBalanceUnit <= (isUVR?0.5:100) || currentMonth === 1) {
                     graphData.push({
                         mes: currentMonth,
-                        deudaBanco: Math.round(baseData.balancePesos),
+                        deudaBanco: Math.round(scheduleBanco[currentMonth-1] || 0),
                         deudaEstrategia: Math.round(balancePesos > 0 ? balancePesos : 0),
                     });
                 }
             }
 
-            // Rellenar gráfica
-            if (currentMonth < totalMonthsOriginal) {
+            if (currentMonth < months) {
                 graphData.push({
-                    mes: totalMonthsOriginal,
+                    mes: months,
                     deudaBanco: 0,
                     deudaEstrategia: 0
                 });
             }
 
-            // Métricas Finales
-            // Aproximación del pago total original (Banco) sumando intereses proyectados + capital inicial + seguros
-            const totalPaymentOriginalPesos = loanAmount + totalInterestBasePesos + (insurance * totalMonthsOriginal);
-            const totalPaymentNewPesos = loanAmount + totalInterestStrategyPesos + totalInsurancePesos;
+            const totalPaymentOriginalPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestBancoPesos + (insurance * months);
+            const totalPaymentNewPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + totalFrechBenefitPesos; // Ajuste para consistencia métrica
 
             return {
                 metrics: {
-                    originalTerm: totalMonthsOriginal,
+                    originalTerm: months,
                     newTerm: schedule.length,
-                    monthsSaved: totalMonthsOriginal - schedule.length,
-                    interestSaved: totalInterestBasePesos - totalInterestStrategyPesos,
+                    monthsSaved: Math.max(0, months - schedule.length),
+                    interestSaved: Math.max(0, totalInterestBancoPesos - totalInterestPaidPesos),
                     totalPaymentOriginal: totalPaymentOriginalPesos,
-                    totalPaymentNew: totalPaymentNewPesos,
-                    monthlyObligatory: pmtTotalObligatoryDisplay, // Muestra 1er mes aprox
+                    totalPaymentNew: (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + (insurance * schedule.length),
+                    monthlyObligatory: pmtTotalObligatoryDisplay,
                     monthlyTotalEffort: pmtTotalObligatoryDisplay + extraMonthly, 
                     effortIncreasePct: (extraMonthly / pmtTotalObligatoryDisplay) * 100,
-                    timeReductionPct: ((totalMonthsOriginal - schedule.length) / totalMonthsOriginal) * 100,
+                    timeReductionPct: months > 0 ? ((months - schedule.length) / months) * 100 : 0,
                     isManualQuota,
-                    isUVR
+                    isUVR,
+                    hasFrech, // Nuevo flag para UI
+                    totalFrechBenefit: totalFrechBenefitPesos
                 },
                 graphData,
                 schedule
             };
         };
 
-        // --- VISTAS ---
+        // --- VISTAS (RESTORED EXACTLY FROM V2 + FRECH UPDATES) ---
 
         const BudgetView = ({ onApplyExtra }) => {
             const [finances, setFinances] = useState({
@@ -598,9 +630,8 @@
                 others: 200000
             });
 
-            const totalExpenses = Object.values(finances).reduce((a,b) => a+b, 0) - finances.income; // Fix logic below
-            const totalExpensesReal = finances.housing + finances.food + finances.transport + finances.utilities + finances.entertainment + finances.others;
-            const surplus = finances.income - totalExpensesReal;
+            const totalExpensesReal = Object.values(finances).reduce((a,b) => a+b, 0) - finances.income;
+            const surplus = finances.income - (finances.housing + finances.food + finances.transport + finances.utilities + finances.entertainment + finances.others);
             const recommendedExtra = Math.max(0, surplus * 0.7); 
 
             const handleChange = (field, value) => {
@@ -636,11 +667,7 @@
                                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4 flex items-center">
                                     <Wallet size={16} className="mr-2 text-emerald-600"/> Ingresos Mensuales
                                 </h3>
-                                <NumericInput 
-                                    label="Total Ingresos (Neto)" 
-                                    value={finances.income} 
-                                    onChange={(v) => handleChange('income', v)} 
-                                />
+                                <NumericInput label="Total Ingresos (Neto)" value={finances.income} onChange={(v) => handleChange('income', v)} />
                             </div>
 
                             <div className="space-y-4">
@@ -668,7 +695,6 @@
                                                 <Pie data={dataPie} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
                                                     {dataPie.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                                 </Pie>
-                                                <Tooltip formatter={(value) => formatCurrency(value)} />
                                             </RechartsPieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -679,10 +705,6 @@
                                         <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
                                             <span className="text-sm text-slate-600 font-medium">Ingresos</span>
                                             <span className="font-bold text-slate-800">{formatCurrency(finances.income)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl border border-rose-100">
-                                            <span className="text-sm text-rose-700 font-medium">Gastos Totales</span>
-                                            <span className="font-bold text-rose-800">-{formatCurrency(totalExpensesReal)}</span>
                                         </div>
                                         <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-100">
                                             <span className="text-sm text-emerald-700 font-bold">Disponible Real</span>
@@ -703,12 +725,8 @@
                                             <span className="text-xs font-bold text-indigo-400 uppercase">Abono Sugerido</span>
                                             <span className="text-3xl font-black text-indigo-600">{formatCurrency(recommendedExtra)}</span>
                                         </div>
-                                        <button 
-                                            onClick={() => onApplyExtra(recommendedExtra)}
-                                            className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center justify-center"
-                                        >
-                                            <Zap className="w-5 h-5 mr-2 fill-current" />
-                                            Aplicar esta cantidad
+                                        <button onClick={() => onApplyExtra(recommendedExtra)} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.02] transition-all flex items-center justify-center">
+                                            <Zap className="w-5 h-5 mr-2 fill-current" /> Aplicar esta cantidad
                                         </button>
                                     </div>
                                 </div>
@@ -741,28 +759,22 @@
 
             return (
                 <div className="space-y-6 pb-20 lg:pb-0 animate-in fade-in duration-500">
-                    {/* KPI Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group min-h-[160px]">
-                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Wallet size={80} className="text-emerald-600"/>
-                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Wallet size={80} className="text-emerald-600"/></div>
                             <div>
                                 <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Ahorro Intereses</p>
                                 <h3 className="text-2xl lg:text-3xl font-extrabold text-emerald-600 tracking-tight break-words">{formatCurrency(metrics.interestSaved)}</h3>
                             </div>
                             <div className="mt-auto pt-4 flex items-center w-full">
                                 <div className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 flex items-center w-full">
-                                    <TrendingDown size={14} className="mr-1.5 shrink-0" /> 
-                                    <span className="truncate">Dinero ahorrado</span>
+                                    <TrendingDown size={14} className="mr-1.5 shrink-0" /> <span className="truncate">Dinero ahorrado</span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group min-h-[160px]">
-                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Calendar size={80} className="text-blue-600"/>
-                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Calendar size={80} className="text-blue-600"/></div>
                             <div>
                                 <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Tiempo Ganado</p>
                                 <h3 className="text-2xl lg:text-3xl font-extrabold text-blue-600 tracking-tight flex flex-wrap gap-x-2 items-baseline">
@@ -772,8 +784,7 @@
                             </div>
                             <div className="mt-auto pt-4 flex items-center w-full">
                                 <div className="text-xs font-medium text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 flex items-center w-full">
-                                    <Target size={14} className="mr-1.5 shrink-0" /> 
-                                    <span className="truncate">-{metrics.timeReductionPct.toFixed(0)}% del plazo total</span>
+                                    <Target size={14} className="mr-1.5 shrink-0" /> <span className="truncate">-{metrics.timeReductionPct.toFixed(0)}% del plazo total</span>
                                 </div>
                             </div>
                         </div>
@@ -785,8 +796,7 @@
                             </div>
                             <div className="mt-auto pt-4 flex items-center w-full">
                                 <div className="text-xs font-medium text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center w-full">
-                                    <DollarSign size={14} className="mr-1.5 shrink-0" /> 
-                                    <span className="truncate">Antes: <span className="line-through decoration-rose-400">{formatCurrency(metrics.totalPaymentOriginal)}</span></span>
+                                    <DollarSign size={14} className="mr-1.5 shrink-0" /> <span className="truncate">Antes: <span className="line-through decoration-rose-400">{formatCurrency(metrics.totalPaymentOriginal)}</span></span>
                                 </div>
                             </div>
                         </div>
@@ -802,34 +812,29 @@
                             </div>
                             <div className="mt-auto pt-4 text-xs text-indigo-50 leading-relaxed font-medium border-t border-white/10">
                                 {metrics.isUVR 
-                                    ? "En créditos UVR, los abonos a capital son críticos para amortiguar la inflación."
+                                    ? "En UVR, abonar capital es vital. Tu abono amortigua la inflación y evita que la deuda crezca exponencialmente."
                                     : `Por cada $1,000 extra, ahorras ${formatCurrency((metrics.interestSaved / (metrics.monthlyTotalEffort * metrics.newTerm - metrics.monthlyObligatory * metrics.newTerm) * 1000 || 0))} en intereses futuros.`
                                 }
                             </div>
                         </div>
                     </div>
 
-                    {/* Impacto Mensual Detallado */}
                     <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                        
-                        {/* Banco */}
                         <div className="flex-1 w-full relative z-10">
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
                                 <span className="w-2 h-2 rounded-full bg-slate-300 mr-2"></span>
-                                Pago Mínimo {metrics.isUVR ? "(Estimado Inicial)" : "(Banco)"}
+                                Pago Mínimo {metrics.isUVR ? "(Estimado)" : "(Banco)"}
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <h3 className="text-2xl lg:text-3xl font-bold text-slate-700">{formatCurrency(metrics.monthlyObligatory)}</h3>
                                 <span className="text-xs text-slate-400 font-medium">/mes</span>
                             </div>
                             <p className="text-xs text-slate-400 mt-1 pl-4">
-                                {metrics.isUVR ? "Varía cada mes con la inflación" : "Cuota obligatoria + Seguros"}
+                                {metrics.hasFrech ? "Incluye descuento FRECH" : (metrics.isUVR ? "Varía cada mes" : "Cuota fija + Seguros")}
                             </p>
                         </div>
-
                         <div className="hidden sm:flex text-slate-300"><ArrowRight size={24} /></div>
-
                         <div className="flex-1 w-full relative z-10">
                             <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
@@ -841,7 +846,6 @@
                             </div>
                             <p className="text-xs text-emerald-600/70 mt-1 pl-4">Incluye tu abono inteligente</p>
                         </div>
-
                         <div className="w-full sm:w-auto bg-slate-50 rounded-xl p-4 border border-slate-100 min-w-[200px]">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-slate-500 text-xs font-bold">Esfuerzo Adicional</span>
@@ -857,7 +861,6 @@
                         </div>
                     </div>
 
-                    {/* Gráfica */}
                     <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
                             <h3 className="font-bold text-slate-800 flex items-center text-lg">
@@ -869,7 +872,6 @@
                                 <div className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2"></span> Estrategia</div>
                             </div>
                         </div>
-                        
                         <div className="h-64 sm:h-80 w-full -ml-2">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={graphData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -883,45 +885,18 @@
                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
-                                    <XAxis 
-                                        dataKey="mes" 
-                                        tick={{fontSize: 10, fill: '#94a3b8'}} 
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tickFormatter={(val) => val % 24 === 0 ? `${val/12}A` : ''} 
-                                    />
-                                    <YAxis 
-                                        tickFormatter={(val) => `${val/1000000}M`} 
-                                        tick={{fontSize: 10, fill: '#94a3b8'}}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        width={40}
-                                    />
+                                    <XAxis dataKey="mes" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => val % 24 === 0 ? `${val/12}A` : ''} />
+                                    <YAxis tickFormatter={(val) => `${val/1000000}M`} tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} width={40} />
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <Tooltip content={<CustomTooltip />} />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="deudaBanco" 
-                                        stroke="#94a3b8" 
-                                        strokeWidth={2}
-                                        strokeDasharray="4 4"
-                                        fill="url(#colorBanco)" 
-                                        animationDuration={1000}
-                                    />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="deudaEstrategia" 
-                                        stroke="#10b981" 
-                                        strokeWidth={3}
-                                        fill="url(#colorEstrategia)" 
-                                        animationDuration={1000}
-                                    />
+                                    <Area type="monotone" dataKey="deudaBanco" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" fill="url(#colorBanco)" animationDuration={1000} />
+                                    <Area type="monotone" dataKey="deudaEstrategia" stroke="#10b981" strokeWidth={3} fill="url(#colorEstrategia)" animationDuration={1000} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                         {metrics.isUVR && (
                              <p className="text-[10px] text-slate-400 mt-2 text-center italic">
-                                * Nota: En créditos UVR, el saldo en pesos puede subir al inicio aunque abones, debido a que la corrección monetaria (inflación) supera a la amortización de capital.
+                                * Nota: En UVR, el saldo en pesos aumenta si la inflación supera a tu abono a capital (incluso con abonos extra al inicio).
                              </p>
                         )}
                     </div>
@@ -931,7 +906,6 @@
 
         const LegalGenerator = ({ inputs }) => {
             const [type, setType] = useState("plazo"); 
-            const [mode, setMode] = useState("template"); 
             const [personalData, setPersonalData] = useState({
                 name: "",
                 cc: "",
@@ -939,17 +913,16 @@
                 creditNumber: "",
                 city: "Bogotá D.C."
             });
-
             const letterRef = useRef(null);
 
             const handleCopy = () => {
                 if (letterRef.current) {
-                    const text = letterRef.current.innerText;
-                    navigator.clipboard.writeText(text);
+                    navigator.clipboard.writeText(letterRef.current.innerText);
                     alert("Texto copiado.");
                 }
             };
-            const handlePrint = () => window.print();
+
+            const handleChange = (e) => setPersonalData({ ...personalData, [e.target.name]: e.target.value });
 
             return (
                 <div className="max-w-4xl mx-auto space-y-6 pb-24 lg:pb-0 animate-in fade-in">
@@ -958,17 +931,22 @@
                         <div className="relative z-10">
                             <h2 className="text-lg font-bold text-amber-900 mb-2">Ley de Vivienda 546 de 1999</h2>
                             <p className="text-amber-800 text-sm mb-4">Derecho irrenunciable al prepago sin penalidad.</p>
-                            <a href="https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=398" target="_blank" className="text-xs font-bold text-amber-700 underline">Ley 546 de 1999 - Gestor Normativo - Función Pública</a>
+                            <a href="https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=398" target="_blank" className="text-xs font-bold text-amber-700 underline">Ver Norma Completa</a>
                         </div>
                     </div>
 
                     <div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                         {/* Configuración Carta */}
-                        <div className="no-print space-y-6 mb-8 border-b border-slate-100 pb-8">
-                            <div className="flex gap-4">
-                                <button onClick={() => setType("plazo")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'plazo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}`}>Reducir Plazo</button>
-                                <button onClick={() => setType("cuota")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'cuota' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100'}`}>Reducir Cuota</button>
-                            </div>
+                        <div className="no-print grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 border-b border-slate-100 pb-8">
+                             <input type="text" name="city" placeholder="Ciudad" value={personalData.city} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                             <input type="text" name="bank" placeholder="Nombre Banco" value={personalData.bank} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                             <input type="text" name="name" placeholder="Tu Nombre Completo" value={personalData.name} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                             <input type="text" name="cc" placeholder="Tu Cédula" value={personalData.cc} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                             <input type="text" name="creditNumber" placeholder="Número Crédito" value={personalData.creditNumber} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                        </div>
+                        
+                        <div className="no-print flex gap-4 mb-4">
+                            <button onClick={() => setType("plazo")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'plazo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}`}>Reducir Plazo</button>
+                            <button onClick={() => setType("cuota")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'cuota' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100'}`}>Reducir Cuota</button>
                         </div>
                         
                         <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-8 md:bg-gray-100 mb-6">
@@ -979,18 +957,16 @@
                                 <p className="mb-4">De conformidad con la Ley 546 de 1999, solicito aplicar el abono de <strong>{formatCurrency(inputs.extraMonthly)}</strong> a capital para: <strong>{type === 'plazo' ? "REDUCIR PLAZO" : "REDUCIR CUOTA"}</strong>.</p>
                                 <br/><br/>
                                 <p>Cordialmente,</p>
-                                <br/>
+                                <br/><br/>
                                 <p className="font-bold">__________________________</p>
-                                <p>Titular</p>
-                                <div className="mt-12 text-[10px] text-slate-400 text-center border-t border-slate-100 pt-4 print:hidden">
-                                    Generado con CrediMaster Pro - Autor: Jose Manuel Mejia Erazo
-                                </div>
+                                <p>{personalData.name || "Titular"}</p>
+                                <p>C.C. {personalData.cc || "___________"}</p>
                             </div>
                         </div>
                         
                         <div className="flex gap-4 no-print">
-                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold">Copiar</button>
-                            <button onClick={handlePrint} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold">Imprimir</button>
+                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold">Copiar Texto</button>
+                            <button onClick={() => window.print()} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold">Imprimir PDF</button>
                         </div>
                     </div>
                 </div>
@@ -1001,6 +977,7 @@
             const [activeTab, setActiveTab] = useState('dashboard');
             const [inputs, setInputs] = useState({
                 loanAmount: 180000000,
+                loanAmountUVR: 0, 
                 rateEA: 13.5,
                 months: 240,
                 insurance: 65000,
@@ -1008,13 +985,22 @@
                 oneTimePayment: 0,
                 usePrimas: true,
                 currentQuota: 0,
-                // Nuevos campos UVR
                 isUVR: false,
-                uvrValue: 360.5432, // Ejemplo valor UVR
-                inflation: 4.5 // Ejemplo inflación anual
+                uvrValue: 360.5432,
+                inflation: 4.5,
+                // Estado Nuevo FRECH
+                hasFrech: false,
+                frechPoints: 4.0
             });
             const [aiReport, setAiReport] = useState(null);
             const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+            // Init UVR
+            useEffect(() => {
+                if(inputs.isUVR && inputs.loanAmountUVR === 0 && inputs.loanAmount > 0) {
+                     setInputs(prev => ({...prev, loanAmountUVR: prev.loanAmount / prev.uvrValue}));
+                }
+            }, []);
 
             const debouncedInputs = useDebounce(inputs, 300);
             const results = useMemo(() => calculateEngine(debouncedInputs), [debouncedInputs]);
@@ -1030,7 +1016,6 @@
             };
 
             const handleGenerateReport = async () => {
-                // ... (Mantener lógica IA igual pero añadiendo contexto UVR si aplica)
                 setIsGeneratingReport(true);
                 setTimeout(() => {
                     setAiReport("Análisis IA Simulado: Gran estrategia. Mantener el abono extra reduce significativamente los intereses.");
@@ -1065,25 +1050,28 @@
                                         <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                                             <tr>
                                                 <th className="px-4 py-3">Mes</th>
-                                                {inputs.isUVR && <th className="px-4 py-3 text-right text-purple-400">UVR Unit</th>}
                                                 <th className="px-4 py-3 text-right">Cuota Total</th>
-                                                <th className="px-4 py-3 text-right text-blue-600">Abono Ord.</th>
-                                                <th className="px-4 py-3 text-right text-emerald-600">Extra</th>
-                                                <th className="px-4 py-3 text-right text-indigo-700 font-bold">Abono Total</th>
-                                                <th className="px-4 py-3 text-right text-rose-500">Interés</th>
+                                                
+                                                {/* COLUMNAS NUEVAS PARA DETALLE BANCARIO */}
+                                                <th className="px-4 py-3 text-right text-slate-400 hidden md:table-cell">Int. Full</th>
+                                                {inputs.hasFrech && <th className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50">FRECH</th>}
+                                                <th className="px-4 py-3 text-right text-rose-500 font-bold">Int. Neto</th>
+                                                
+                                                <th className="px-4 py-3 text-right text-indigo-700">Abono Cap.</th>
                                                 <th className="px-4 py-3 text-right">Saldo</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {results.schedule.map((row) => (
+                                            {results.schedule.slice(0, 100).map((row) => (
                                                 <tr key={row.month} className="hover:bg-slate-50/50 transition-colors">
                                                     <td className="px-4 py-3 font-medium text-slate-900">{row.month}</td>
-                                                    {inputs.isUVR && <td className="px-4 py-3 text-right text-purple-400 text-xs">{formatNumber(row.uvrUnitValue, 2)}</td>}
                                                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(row.paymentTotal)}</td>
-                                                    <td className="px-4 py-3 text-right text-blue-600">{formatCurrency(row.capitalOrdinary)}</td>
-                                                    <td className="px-4 py-3 text-right text-emerald-600 font-medium">{row.extraApplied > 0 ? `+${formatCurrency(row.extraApplied)}` : '-'}</td>
-                                                    <td className="px-4 py-3 text-right text-indigo-700 font-bold bg-indigo-50/30">{formatCurrency(row.capitalTotal)}</td>
-                                                    <td className="px-4 py-3 text-right text-rose-500">{formatCurrency(row.interest)}</td>
+                                                    
+                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs hidden md:table-cell">{formatCurrency(row.interestFull)}</td>
+                                                    {inputs.hasFrech && <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/50">-{formatCurrency(row.frechBenefit)}</td>}
+                                                    <td className="px-4 py-3 text-right text-rose-500 font-bold">{formatCurrency(row.interestNet)}</td>
+                                                    
+                                                    <td className="px-4 py-3 text-right text-indigo-700 font-bold">{formatCurrency(row.capitalTotal)}</td>
                                                     <td className="px-4 py-3 text-right font-bold text-slate-700">{formatCurrency(row.balance)}</td>
                                                 </tr>
                                             ))}
@@ -1097,7 +1085,7 @@
                             <div className="pb-24 animate-in slide-in-from-bottom-4">
                                 <h2 className="text-xl font-bold text-slate-800 mb-6 px-1">Configuración</h2>
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} />
+                                    <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} setInputs={setInputs} />
                                 </div>
                             </div>
                         );
@@ -1133,7 +1121,9 @@
                                     </button>
                                 ))}
                             </nav>
-                            <div className="pt-6 border-t border-slate-100"><CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} /></div>
+                            <div className="pt-6 border-t border-slate-100">
+                                <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} setInputs={setInputs} />
+                            </div>
                             <div className="pt-6 mt-auto text-center opacity-70 hover:opacity-100 transition-opacity">
                                 <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">Desarrollado por</p>
                                 <div className="flex items-center justify-center gap-2 text-slate-600"><Code2 size={14} className="text-blue-500" /><span className="font-bold text-xs">Jose Mejia</span></div>
@@ -1147,7 +1137,6 @@
                                 <div className="bg-blue-600 p-1.5 rounded-lg"><TrendingDown size={16} className="text-white" /></div>
                                 <div className="flex flex-col"><span className="font-bold text-slate-800 text-sm leading-tight">CrediMaster</span><span className="text-[9px] text-slate-400 font-medium leading-tight">by jm_erazo</span></div>
                             </div>
-                            <div className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">v2.1</div>
                         </header>
                         <div className="p-4 md:p-8 md:max-w-6xl md:mx-auto">{renderContent()}</div>
                     </main>
@@ -1174,4 +1163,4 @@
         root.render(<App />);
     </script>
 </body>
-    </html>
+</html>
