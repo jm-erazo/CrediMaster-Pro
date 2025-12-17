@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrediMaster Pro v3.2 - Suite Financiera</title>
+    <title>CrediMaster Pro v3.3 - Suite Financiera</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,19 +30,35 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         
+        /* --- MEJORA DE IMPRESIÓN (PDF LIMPIO) --- */
         @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white; }
-            .letter-paper { 
-                box-shadow: none !important; 
-                border: none !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                width: 100% !important; 
-                max-width: none !important;
+            body * {
+                visibility: hidden; /* Oculta todo por defecto */
             }
-            @page { margin: 2cm; }
+            /* Muestra solo el área de impresión y sus hijos */
+            #printable-area, #printable-area * {
+                visibility: visible;
+            }
+            /* Posiciona el área de impresión en la esquina superior izquierda */
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: white;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            /* Oculta explícitamente elementos de UI */
+            .no-print, nav, aside, button, header, .toast-container {
+                display: none !important;
+            }
+            @page {
+                margin: 2.5cm; /* Margen estándar de oficina */
+                size: auto;
+            }
         }
     </style>
 
@@ -71,13 +87,44 @@
             FileText, TrendingDown, TrendingUp, Share2, Copy, Calculator, PiggyBank,
             Coffee, Home, Car, ShoppingBag, Zap, ExternalLink, User, Building2, CreditCard,
             RotateCcw, CheckCircle2, Code2, Coins, TrendingUp as TrendingUpIcon, FileSearch, Receipt,
-            Download, Layers, Percent, AlertCircle, Briefcase, Stamp, Scale, SlidersHorizontal
+            Download, Layers, Percent, AlertCircle, Briefcase, Stamp, Scale, SlidersHorizontal, Check
         } from 'lucide-react';
         
         import { 
             XAxis, YAxis, CartesianGrid, Tooltip, 
             ResponsiveContainer, AreaChart, Area, Cell, Pie, PieChart as RechartsPieChart, LineChart, Line, Legend
         } from 'recharts';
+
+        // --- SISTEMA DE NOTIFICACIONES (NUEVO: PLUS PROFESIONAL) ---
+        const ToastContext = React.createContext();
+
+        const ToastProvider = ({ children }) => {
+            const [toasts, setToasts] = useState([]);
+
+            const addToast = (message, type = 'success') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(t => t.id !== id));
+                }, 3000);
+            };
+
+            return (
+                <ToastContext.Provider value={{ addToast }}>
+                    {children}
+                    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 toast-container no-print pointer-events-none">
+                        {toasts.map(toast => (
+                            <div key={toast.id} className="pointer-events-auto bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium animate-in slide-in-from-bottom-4">
+                                {toast.type === 'success' ? <CheckCircle2 size={18} className="text-emerald-400"/> : <Info size={18}/>}
+                                {toast.message}
+                            </div>
+                        ))}
+                    </div>
+                </ToastContext.Provider>
+            );
+        };
+
+        const useToast = () => React.useContext(ToastContext);
 
         // --- UTILIDADES ---
         const formatCurrency = (value, decimals = 2) => {
@@ -481,7 +528,7 @@
             );
         };
 
-        // --- LÓGICA DE NEGOCIO AVANZADA (CORREGIDA Y CALIBRADA) ---
+        // --- LÓGICA DE NEGOCIO AVANZADA (INTACTA) ---
 
         const calculateEngine = (params) => {
             const { 
@@ -497,15 +544,12 @@
             if (!loanAmount || !rateEA || (isUVR && !uvrValue)) return null;
 
             // 1. Definición de Tasas
-            // CORRECCIÓN: Si hay calibración de interés, calculamos la tasa mensual implícita real
             let rateMonthlyFull;
             let impliedMonthlyRate = 0;
             const standardMonthlyRate = Math.pow(1 + rateEA / 100, 1 / 12) - 1;
 
             if (calibrationInterest > 0 && loanAmount > 0) {
                 impliedMonthlyRate = calibrationInterest / loanAmount;
-                // Si la tasa implícita es muy diferente (ej > 50% de error), usar la estándar para evitar errores de input, sino usar implícita
-                // Aquí confiamos en el input del usuario para "calibrar"
                 rateMonthlyFull = impliedMonthlyRate;
             } else {
                 rateMonthlyFull = standardMonthlyRate;
@@ -523,14 +567,12 @@
             let balanceStrategyUnit = balanceBaseUVR;
             let currentUVR = isUVR ? uvrValue : 1; 
 
-            // --- CÁLCULO DE CUOTA BASE (CORREGIDO) ---
+            // --- CÁLCULO DE CUOTA BASE ---
             let pmtFixedUnit; 
             let pmtTotalObligatoryDisplay; 
             let isManualQuota = false;
             
-            // CORRECCIÓN: Prioridad a la calibración por componentes (Capital + Interés)
             if (calibrationCapital > 0 && calibrationInterest > 0) {
-                // Si el usuario nos da los componentes exactos, esa es la cuota fija base (sin seguros)
                 const totalBasePesos = calibrationCapital + calibrationInterest;
                 
                 if (isUVR) {
@@ -539,12 +581,10 @@
                     pmtFixedUnit = totalBasePesos;
                 }
                 
-                // Ajustamos el display total
                 pmtTotalObligatoryDisplay = totalBasePesos + insurance;
                 isManualQuota = true;
 
             } else if (currentQuota && currentQuota > insurance) {
-                // Fallback: Si solo da el total, deducimos seguros
                 isManualQuota = true;
                 const quotaWithoutInsurance = currentQuota - insurance;
                 
@@ -556,7 +596,6 @@
                 pmtTotalObligatoryDisplay = currentQuota;
             } else {
                 if (!months) return null;
-                // Fórmula Francesa Estándar (Fallback final)
                 pmtFixedUnit = balanceBaseUVR * (rateMonthlyFull * Math.pow(1 + rateMonthlyFull, months)) / (Math.pow(1 + rateMonthlyFull, months) - 1);
                 
                 const firstMonthPaymentPesos = isUVR 
@@ -566,23 +605,18 @@
                 pmtTotalObligatoryDisplay = firstMonthPaymentPesos;
             }
 
-            // --- LÓGICA FRECH CALIBRADA ---
-            // Calcular factor de reducción de tasa si se provee valor extracto
+            // --- LÓGICA FRECH ---
             let frechRateReductionFactor = 0;
             if (hasFrech) {
                 if (frechMonthlyValue > 0 && loanAmount > 0) {
-                    // Calculamos qué porcentaje del saldo representa el subsidio actual
                     frechRateReductionFactor = frechMonthlyValue / loanAmount;
                 } else {
-                    // Calculamos basado en puntos porcentuales (aproximación)
                     const rateWithFrech = Math.max(0, rateEA - frechPoints);
                     const monthlyWith = Math.pow(1 + rateWithFrech/100, 1/12) - 1;
                     frechRateReductionFactor = rateMonthlyFull - monthlyWith;
                 }
             }
-            // Definimos límite de meses Frech
-            const frechLimitMonth = frechRemainingMonths > 0 ? frechRemainingMonths : 84; // Default 7 años si no especifica
-
+            const frechLimitMonth = frechRemainingMonths > 0 ? frechRemainingMonths : 84;
 
             // --- SIMULACIÓN ESTRATEGIA ---
             let schedule = [];
@@ -596,7 +630,6 @@
             let currentInsurance = insurance;
             let currentExtraMonthly = extraMonthly; 
 
-            // Gráfica
             const graphData = [];
             graphData.push({
                 mes: 0,
@@ -604,7 +637,6 @@
                 deudaEstrategia: Math.round(isUVR ? balanceStrategyUnit * uvrValue : loanAmount),
             });
 
-            // Simulación Banco paralela
             let balanceBancoUnit = balanceBaseUVR;
             let uvrBanco = currentUVR;
             let insuranceBanco = insurance;
@@ -615,63 +647,37 @@
             while (tempBalanceUnit > (isUVR ? 0.01 : 100) && currentMonth < SAFE_LIMIT) {
                 currentMonth++;
                 
-                // Actualización Inflación
                 if (isUVR) {
                     tempUVR = tempUVR * (1 + inflationMonthly);
                     uvrBanco = uvrBanco * (1 + inflationMonthly);
                 }
 
-                // Actualización Seguros
                 if (insuranceIndexed) {
                     currentInsurance = currentInsurance * (1 + inflationMonthly);
                     insuranceBanco = insuranceBanco * (1 + inflationMonthly);
                 }
 
-                // Incremento Anual Abono
                 if (currentMonth > 1 && currentMonth % 12 === 1 && annualIncrease > 0) {
                     currentExtraMonthly = currentExtraMonthly * (1 + (annualIncrease / 100));
                 }
                 
-                // --- LÓGICA ESTRATEGIA ---
-
-                // 1. Interés Full
                 const interestFullUnit = tempBalanceUnit * rateMonthlyFull;
                 
-                // 2. Beneficio FRECH (Condicionado al tiempo restante y cálculo preciso)
                 let frechSubsidyUnit = 0;
                 if (hasFrech && currentMonth <= frechLimitMonth) {
-                    // Aplica reducción sobre el saldo actual
                     frechSubsidyUnit = tempBalanceUnit * frechRateReductionFactor;
-                    
-                    // Safety check: Subsidio no puede ser mayor al interés
                     if (frechSubsidyUnit > interestFullUnit) frechSubsidyUnit = interestFullUnit;
                 }
 
-                // 3. Interés Neto Cliente
                 const interestClientUnit = interestFullUnit - frechSubsidyUnit;
-
-                // 4. Capital Ordinario (Cuota Fija - Interés Neto)
-                // OJO: En sistemas UVR o Pesos tradicional, la cuota fija cubre el interés full, y el subsidio es un cheque aparte o descuento.
-                // Generalmente: PAGO_BOLSILLO = (PMT_FIJO - SUBSIDIO) + SEGUROS.
-                // Pero aquí definimos PMT como el valor base. 
-                // Si el PMT fue calculado CON tasa full, entonces Capital = PMT - InterestFull.
-                // Si el PMT es lo que paga el cliente, Capital = PMT - InterestClient.
-                // CORRECCIÓN: Asumiremos PMT Fixed Unit es la cuota "Pura" contractual antes de subsidios.
-                // Capital = PMT_Contractual - Interes_Full.
-                // El cliente paga: PMT_Contractual - Subsidio + Seguros.
-                
                 let capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit;
                 
-                // Si calibración fue usada, pmtFixedUnit nació de (Capital + InteresNeto). 
-                // Ajuste para consistencia si usamos calibración manual:
                 if (isManualQuota && calibrationInterest > 0) {
-                     // En este caso PMT_fixed ya es "neto" aproximado, recalibramos
-                     capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit; // Mantenemos logica estandar contractual
+                     capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit; 
                 }
                 
-                if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0; // Amortización negativa protection
+                if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0; 
 
-                // 5. Abonos Extras
                 let paymentExtraPesos = currentExtraMonthly;
                 if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) {
                     paymentExtraPesos += currentExtraMonthly; 
@@ -679,11 +685,8 @@
                 if (currentMonth === 1) paymentExtraPesos += oneTimePayment;
 
                 let paymentExtraUnit = isUVR ? (paymentExtraPesos / tempUVR) : paymentExtraPesos;
-
-                // 6. Aplicar Pagos
                 let capitalTotalUnit = capitalOrdinaryUnit + paymentExtraUnit;
 
-                // Ajuste preciso fin de deuda
                 if (capitalTotalUnit > tempBalanceUnit) {
                     capitalTotalUnit = tempBalanceUnit; 
                     if (tempBalanceUnit < capitalOrdinaryUnit) {
@@ -697,8 +700,7 @@
                 tempBalanceUnit -= capitalTotalUnit;
                 if(tempBalanceUnit < (isUVR ? 0.0001 : 1)) tempBalanceUnit = 0;
                 
-                // --- LÓGICA BANCO (Comparativo) ---
-                // Simula el crédito sin abonos extras
+                // Simulación Banco
                 if (balanceBancoUnit > (isUVR ? 0.01 : 100)) {
                     const intBancoFullUnit = balanceBancoUnit * rateMonthlyFull;
                     let frechBancoUnit = 0;
@@ -708,7 +710,7 @@
                     }
                     
                     const intBancoNetUnit = intBancoFullUnit - frechBancoUnit;
-                    let capBancoUnit = pmtFixedUnit - intBancoFullUnit; // Capital contractual
+                    let capBancoUnit = pmtFixedUnit - intBancoFullUnit; 
                     
                     if (capBancoUnit > balanceBancoUnit) capBancoUnit = balanceBancoUnit;
                     
@@ -720,7 +722,6 @@
                 }
                 scheduleBanco.push(isUVR ? balanceBancoUnit * uvrBanco : balanceBancoUnit);
 
-                // --- CONVERSIONES A PESOS (VISUAL) ---
                 const interestFullPesos = isUVR ? interestFullUnit * tempUVR : interestFullUnit;
                 const frechSubsidyPesos = isUVR ? frechSubsidyUnit * tempUVR : frechSubsidyUnit;
                 const interestClientPesos = isUVR ? interestClientUnit * tempUVR : interestClientUnit;
@@ -730,7 +731,6 @@
                 const paymentExtraAppliedPesos = isUVR ? paymentExtraUnit * tempUVR : paymentExtraUnit;
                 const balancePesos = isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit;
                 
-                // Pago Total Bolsillo = (InteresNeto + CapitalOrdinario + Seguros) + AbonoExtra
                 const totalPaymentPocketPesos = interestClientPesos + capitalOrdinaryPesos + currentInsurance + paymentExtraAppliedPesos;
 
                 totalInterestPaidPesos += interestClientPesos;
@@ -973,7 +973,6 @@
                             </div>
                         </div>
 
-                        {/* TCC - INDICADOR MEJORADO */}
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between min-h-[160px]">
                             <div>
                                 <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Costo Total Crédito</p>
@@ -1104,12 +1103,45 @@
                 city: "Bogotá D.C."
             });
             const letterRef = useRef(null);
+            const { addToast } = useToast();
 
             const handleCopy = () => {
                 if (letterRef.current) {
                     navigator.clipboard.writeText(letterRef.current.innerText);
-                    alert("Texto copiado al portapapeles.");
+                    addToast("¡Carta copiada al portapapeles con éxito!");
                 }
+            };
+
+            // --- NUEVA FUNCIÓN: DESCARGAR WORD (.DOC) ---
+            const handleDownloadWord = () => {
+                const content = letterRef.current.innerHTML;
+                
+                // Encabezado para que Word interprete el HTML correctamente
+                const preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Carta Derecho de Petición</title><style>
+                    body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; }
+                    p { margin-bottom: 12pt; line-height: 1.5; text-align: justify; }
+                    .header { font-weight: bold; }
+                    .signature { margin-top: 50pt; border-top: 1pt solid black; width: 200pt; padding-top: 5pt; }
+                </style></head><body>`;
+                const postHtml = "</body></html>";
+                
+                const html = preHtml + content + postHtml;
+
+                const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `Carta_Abono_${personalData.bank || 'Banco'}.doc`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                addToast("Descargando archivo Word...");
+            };
+
+            const handlePrint = () => {
+                window.print();
             };
 
             const handleChange = (e) => setPersonalData({ ...personalData, [e.target.name]: e.target.value });
@@ -1151,80 +1183,87 @@
                             </div>
                         </div>
                         
+                        {/* WRAPPER ID PARA IMPRESIÓN */}
                         <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-8 md:bg-gray-100 mb-6 border border-slate-200">
-                            <div ref={letterRef} className="letter-paper font-serif text-slate-900 leading-relaxed max-w-[21.59cm] mx-auto bg-white min-h-[27.94cm] p-[2.5cm] shadow-xl text-justify text-[11pt]">
-                                <p className="mb-8">{personalData.city || "Ciudad"}, {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                
-                                <p className="mb-2">Señores</p>
-                                <p className="mb-2 font-bold uppercase">{personalData.bank || "[NOMBRE DEL BANCO]"}</p>
-                                <p className="mb-6">Departamento de Cartera / Crédito Hipotecario<br/>E. S. D.</p>
-                                
-                                <p className="mb-6 text-right font-bold text-sm">
-                                    REF: DERECHO DE PETICIÓN - ABONO EXTRAORDINARIO A CAPITAL<br/>
-                                    Crédito No. {personalData.creditNumber || "___________"}<br/>
-                                    Titular: {personalData.name || "[NOMBRE DEL TITULAR]"}
-                                </p>
-                                
-                                <p className="mb-4">Respetados señores:</p>
-                                
-                                <p className="mb-4">
-                                    Yo, <strong>{personalData.name || "____________________"}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>{personalData.cc || "___________"}</strong>, 
-                                    en mi calidad de deudor del crédito de la referencia, acudo a ustedes para manifestar mi voluntad de realizar un <strong>ABONO EXTRAORDINARIO A CAPITAL</strong> 
-                                    por valor de <strong>{formatCurrency(inputs.extraMonthly)}</strong> (o la suma que efectivamente consigne).
-                                </p>
-                                
-                                <p className="mb-4">
-                                    De conformidad con lo establecido en la <strong>Ley 546 de 1999 (Ley de Vivienda), Artículo 17, Numeral 8</strong>, 
-                                    los deudores de créditos de vivienda tenemos el derecho irrenunciable a prepagar total o parcialmente nuestras obligaciones 
-                                    <strong>sin penalidad alguna</strong>.
-                                </p>
+                            <div id="printable-area">
+                                <div ref={letterRef} className="letter-paper font-serif text-slate-900 leading-relaxed max-w-[21.59cm] mx-auto bg-white min-h-[27.94cm] p-[2.5cm] shadow-xl text-justify text-[11pt]">
+                                    <p className="mb-8">{personalData.city || "Ciudad"}, {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                    
+                                    <p className="mb-2">Señores</p>
+                                    <p className="mb-2 font-bold uppercase header">{personalData.bank || "[NOMBRE DEL BANCO]"}</p>
+                                    <p className="mb-6">Departamento de Cartera / Crédito Hipotecario<br/>E. S. D.</p>
+                                    
+                                    <p className="mb-6 text-right font-bold text-sm header">
+                                        REF: DERECHO DE PETICIÓN - ABONO EXTRAORDINARIO A CAPITAL<br/>
+                                        Crédito No. {personalData.creditNumber || "___________"}<br/>
+                                        Titular: {personalData.name || "[NOMBRE DEL TITULAR]"}
+                                    </p>
+                                    
+                                    <p className="mb-4">Respetados señores:</p>
+                                    
+                                    <p className="mb-4">
+                                        Yo, <strong>{personalData.name || "____________________"}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>{personalData.cc || "___________"}</strong>, 
+                                        en mi calidad de deudor del crédito de la referencia, acudo a ustedes para manifestar mi voluntad de realizar un <strong>ABONO EXTRAORDINARIO A CAPITAL</strong> 
+                                        por valor de <strong>{formatCurrency(inputs.extraMonthly)}</strong> (o la suma que efectivamente consigne).
+                                    </p>
+                                    
+                                    <p className="mb-4">
+                                        De conformidad con lo establecido en la <strong>Ley 546 de 1999 (Ley de Vivienda), Artículo 17, Numeral 8</strong>, 
+                                        los deudores de créditos de vivienda tenemos el derecho irrenunciable a prepagar total o parcialmente nuestras obligaciones 
+                                        <strong>sin penalidad alguna</strong>.
+                                    </p>
 
-                                <p className="mb-4">
-                                    En ejercicio de este derecho, solicito expresamente que este dinero se aplique de la siguiente manera:
-                                </p>
+                                    <p className="mb-4">
+                                        En ejercicio de este derecho, solicito expresamente que este dinero se aplique de la siguiente manera:
+                                    </p>
 
-                                <div className="ml-8 mb-6 p-4 border-l-4 border-black bg-slate-50 italic">
-                                    {type === 'plazo' ? (
-                                        <>
-                                            <strong>OPCIÓN ELEGIDA: REDUCCIÓN DE PLAZO.</strong><br/>
-                                            Solicito que el abono ingrese directamente al capital de la deuda manteniendo el valor de la cuota actual constante, 
-                                            con el fin de <strong>disminuir el número de cuotas restantes</strong> (Reducción de Plazo).
-                                        </>
-                                    ) : (
-                                        <>
-                                            <strong>OPCIÓN ELEGIDA: REDUCCIÓN DEL CANON/CUOTA.</strong><br/>
-                                            Solicito que el abono ingrese directamente al capital de la deuda manteniendo el plazo actual constante, 
-                                            con el fin de <strong>disminuir el valor mensual de la cuota futura</strong> (Reducción de Cuota).
-                                        </>
-                                    )}
-                                </div>
+                                    <div className="ml-8 mb-6 p-4 border-l-4 border-black bg-slate-50 italic" style={{ borderLeft: '4px solid black', paddingLeft: '1rem', fontStyle: 'italic', background: '#f8fafc' }}>
+                                        {type === 'plazo' ? (
+                                            <>
+                                                <strong>OPCIÓN ELEGIDA: REDUCCIÓN DE PLAZO.</strong><br/>
+                                                Solicito que el abono ingrese directamente al capital de la deuda manteniendo el valor de la cuota actual constante, 
+                                                con el fin de <strong>disminuir el número de cuotas restantes</strong> (Reducción de Plazo).
+                                            </>
+                                        ) : (
+                                            <>
+                                                <strong>OPCIÓN ELEGIDA: REDUCCIÓN DEL CANON/CUOTA.</strong><br/>
+                                                Solicito que el abono ingrese directamente al capital de la deuda manteniendo el plazo actual constante, 
+                                                con el fin de <strong>disminuir el valor mensual de la cuota futura</strong> (Reducción de Cuota).
+                                            </>
+                                        )}
+                                    </div>
 
-                                <p className="mb-4">
-                                    Aclaro que este pago <strong>NO debe ser tomado como un adelanto de cuotas futuras</strong>, sino como una amortización extraordinaria 
-                                    al saldo de capital vigente al momento del pago, tal como lo ordena la Circular Básica Jurídica de la Superintendencia Financiera de Colombia.
-                                </p>
+                                    <p className="mb-4">
+                                        Aclaro que este pago <strong>NO debe ser tomado como un adelanto de cuotas futuras</strong>, sino como una amortización extraordinaria 
+                                        al saldo de capital vigente al momento del pago, tal como lo ordena la Circular Básica Jurídica de la Superintendencia Financiera de Colombia.
+                                    </p>
 
-                                <p className="mb-12">
-                                    Quedo a la espera de la confirmación de la aplicación de este pago y el nuevo plan de pagos proyectado.
-                                    <br/><br/>
-                                    Atentamente,
-                                </p>
+                                    <p className="mb-12">
+                                        Quedo a la espera de la confirmación de la aplicación de este pago y el nuevo plan de pagos proyectado.
+                                        <br/><br/>
+                                        Atentamente,
+                                    </p>
 
-                                <br/>
-                                <div className="border-t border-black w-64 pt-2">
-                                    <p className="font-bold">{personalData.name || "Firma"}</p>
-                                    <p>C.C. {personalData.cc || "___________"}</p>
-                                    <p>Tel: {personalData.phone || "___________"}</p>
+                                    <br/>
+                                    <div className="border-t border-black w-64 pt-2 signature">
+                                        <p className="font-bold">{personalData.name || "Firma"}</p>
+                                        <p>C.C. {personalData.cc || "___________"}</p>
+                                        <p>Tel: {personalData.phone || "___________"}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div className="flex gap-4 no-print">
-                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+                        <div className="flex flex-col sm:flex-row gap-4 no-print">
+                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-200">
                                 <Copy size={18} /> Copiar Texto
                             </button>
-                            <button onClick={() => window.print()} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                                <Printer size={18} /> Imprimir / Guardar PDF
+                            {/* BOTÓN WORD AGREGADO */}
+                            <button onClick={handleDownloadWord} className="flex-1 bg-blue-700 text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
+                                <FileText size={18} /> Descargar Word
+                            </button>
+                            <button onClick={handlePrint} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                                <Printer size={18} /> Imprimir PDF
                             </button>
                         </div>
                     </div>
@@ -1234,32 +1273,42 @@
 
         const App = () => {
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [inputs, setInputs] = useState({
-                loanAmount: 180000000,
-                loanAmountUVR: 0, 
-                rateEA: 13.5,
-                months: 240,
-                insurance: 65000,
-                insuranceIndexed: true, // Nuevo: Seguros suben con inflacion
-                extraMonthly: 400000,
-                annualIncrease: 0, // Nuevo: Incremento anual abono
-                oneTimePayment: 0,
-                usePrimas: true,
-                currentQuota: 0,
-                calibrationCapital: 0, // Nuevo
-                calibrationInterest: 0, // Nuevo
-                isUVR: false,
-                uvrValue: 360.5432,
-                inflation: 4.5,
-                hasFrech: false,
-                frechPoints: 4.0,
-                frechRemainingMonths: 84, // Nuevo Default 7 años
-                frechMonthlyValue: 0 // Nuevo
+            
+            // --- NUEVA FUNCIÓN: RECUPERAR DATOS AL INICIAR ---
+            const [inputs, setInputs] = useState(() => {
+                const saved = localStorage.getItem('credimaster_data');
+                return saved ? JSON.parse(saved) : {
+                    loanAmount: 180000000,
+                    loanAmountUVR: 0, 
+                    rateEA: 13.5,
+                    months: 240,
+                    insurance: 65000,
+                    insuranceIndexed: true,
+                    extraMonthly: 400000,
+                    annualIncrease: 0,
+                    oneTimePayment: 0,
+                    usePrimas: true,
+                    currentQuota: 0,
+                    calibrationCapital: 0,
+                    calibrationInterest: 0,
+                    isUVR: false,
+                    uvrValue: 360.5432,
+                    inflation: 4.5,
+                    hasFrech: false,
+                    frechPoints: 4.0,
+                    frechRemainingMonths: 84,
+                    frechMonthlyValue: 0
+                };
             });
+            
+            // --- NUEVA FUNCIÓN: AUTO-GUARDADO ---
+            useEffect(() => {
+                localStorage.setItem('credimaster_data', JSON.stringify(inputs));
+            }, [inputs]);
+
             const [aiReport, setAiReport] = useState(null);
             const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-            // Init UVR
             useEffect(() => {
                 if(inputs.isUVR && inputs.loanAmountUVR === 0 && inputs.loanAmount > 0) {
                      setInputs(prev => ({...prev, loanAmountUVR: prev.loanAmount / prev.uvrValue}));
@@ -1289,7 +1338,6 @@
                 }, 1500);
             };
 
-            // Función Exportar CSV Mejorada
             const downloadCSV = () => {
                 if(!results || !results.schedule) return;
                 
@@ -1321,7 +1369,7 @@
             };
 
             const renderContent = () => {
-                if (!results) return <div className="p-10 text-center text-slate-400">Cargando motor financiero v3.1...</div>;
+                if (!results) return <div className="p-10 text-center text-slate-400">Cargando motor financiero v3.3...</div>;
 
                 switch(activeTab) {
                     case 'dashboard': return <DashboardView metrics={results.metrics} graphData={results.graphData} />;
@@ -1361,12 +1409,9 @@
                                                 <th className="px-4 py-3 text-right">Cuota (Bolsillo)</th>
                                                 <th className="px-4 py-3 text-right text-rose-500 font-bold">Int. Neto</th>
                                                 <th className="px-4 py-3 text-right text-slate-400 text-xs hidden sm:table-cell">Seguros</th>
-                                                
-                                                {/* NUEVAS COLUMNAS DESGLOSADAS DE CAPITAL */}
                                                 <th className="px-4 py-3 text-right bg-blue-50/50 text-blue-700 border-l border-blue-100">Capital Base</th>
                                                 <th className="px-4 py-3 text-right bg-emerald-50/50 text-emerald-600 font-bold">Abono Extra</th>
                                                 <th className="px-4 py-3 text-right bg-indigo-50/50 text-indigo-700 font-black border-r border-indigo-100">Total Capital</th>
-                                                
                                                 <th className="px-4 py-3 text-right">Saldo</th>
                                             </tr>
                                         </thead>
@@ -1377,12 +1422,9 @@
                                                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(row.paymentTotal)}</td>
                                                     <td className="px-4 py-3 text-right text-rose-500 font-bold">{formatCurrency(row.interestNet)}</td>
                                                     <td className="px-4 py-3 text-right text-slate-400 text-xs hidden sm:table-cell">{formatCurrency(row.insurance)}</td>
-                                                    
-                                                    {/* DATOS DESGLOSADOS */}
                                                     <td className="px-4 py-3 text-right text-blue-700 bg-blue-50/30 border-l border-blue-50">{formatCurrency(row.capitalOrdinary)}</td>
                                                     <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30">{row.extraApplied > 0 ? "+" + formatCurrency(row.extraApplied) : "-"}</td>
                                                     <td className="px-4 py-3 text-right text-indigo-700 font-black bg-indigo-50/30 border-r border-indigo-50">{formatCurrency(row.capitalTotal)}</td>
-                                                    
                                                     <td className="px-4 py-3 text-right font-bold text-slate-700">{formatCurrency(row.balance)}</td>
                                                 </tr>
                                             ))}
@@ -1394,7 +1436,6 @@
                                                 </tr>
                                             )}
                                         </tbody>
-                                        {/* NUEVO FOOTER DE TOTALES */}
                                         <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-200">
                                             <tr>
                                                 <td className="px-4 py-3 sticky left-0 bg-slate-100">TOTALES</td>
@@ -1433,59 +1474,61 @@
             ];
 
             return (
-                <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col lg:flex-row overflow-hidden">
-                    <aside className="hidden lg:flex flex-col w-80 bg-white border-r border-slate-200 h-screen overflow-y-auto fixed left-0 top-0 z-30 shadow-xl lg:shadow-none">
-                        <div className="p-6 border-b border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200/50"><TrendingDown size={24} className="text-white" /></div>
-                                <div><h1 className="font-bold text-xl leading-none text-slate-900 tracking-tight">CrediMaster</h1><span className="text-[10px] text-blue-600 font-bold tracking-[0.2em] uppercase">Pro v3.2</span></div>
+                <ToastProvider>
+                    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col lg:flex-row overflow-hidden">
+                        <aside className="hidden lg:flex flex-col w-80 bg-white border-r border-slate-200 h-screen overflow-y-auto fixed left-0 top-0 z-30 shadow-xl lg:shadow-none no-print">
+                            <div className="p-6 border-b border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200/50"><TrendingDown size={24} className="text-white" /></div>
+                                    <div><h1 className="font-bold text-xl leading-none text-slate-900 tracking-tight">CrediMaster</h1><span className="text-[10px] text-blue-600 font-bold tracking-[0.2em] uppercase">Pro v3.3</span></div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="p-6 space-y-8 flex-1">
-                            <nav className="space-y-1">
+                            <div className="p-6 space-y-8 flex-1">
+                                <nav className="space-y-1">
+                                    {navItems.map((item) => (
+                                        <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                            <item.icon size={20} className={activeTab === item.id ? 'text-blue-600' : 'text-slate-400'} />
+                                            <span>{item.label}</span>
+                                            {activeTab === item.id && <ChevronRight size={16} className="ml-auto opacity-50"/>}
+                                        </button>
+                                    ))}
+                                </nav>
+                                <div className="pt-6 border-t border-slate-100">
+                                    <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} setInputs={setInputs} />
+                                </div>
+                                <div className="pt-6 mt-auto text-center opacity-70 hover:opacity-100 transition-opacity">
+                                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">Desarrollado por</p>
+                                    <div className="flex items-center justify-center gap-2 text-slate-600"><Code2 size={14} className="text-blue-500" /><span className="font-bold text-xs">Jose Mejia</span></div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <main className="flex-1 lg:ml-80 h-screen overflow-y-auto bg-slate-50/50">
+                            <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 lg:hidden flex justify-between items-center no-print">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-blue-600 p-1.5 rounded-lg"><TrendingDown size={16} className="text-white" /></div>
+                                    <div className="flex flex-col"><span className="font-bold text-slate-800 text-sm leading-tight">CrediMaster</span><span className="text-[9px] text-slate-400 font-medium leading-tight">by jm_erazo</span></div>
+                                </div>
+                            </header>
+                            <div className="p-4 md:p-8 md:max-w-6xl md:mx-auto">{renderContent()}</div>
+                        </main>
+
+                        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe px-2 py-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] no-print">
+                            <div className="flex justify-around items-center">
                                 {navItems.map((item) => (
-                                    <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}>
-                                        <item.icon size={20} className={activeTab === item.id ? 'text-blue-600' : 'text-slate-400'} />
-                                        <span>{item.label}</span>
-                                        {activeTab === item.id && <ChevronRight size={16} className="ml-auto opacity-50"/>}
+                                    <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === item.id ? 'text-blue-600' : 'text-slate-400'}`}>
+                                        <div className={`p-1 rounded-full mb-1 transition-all ${activeTab === item.id ? 'bg-blue-50 transform -translate-y-1' : ''}`}><item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} /></div>
+                                        <span className="text-[10px] font-medium">{item.label}</span>
                                     </button>
                                 ))}
-                            </nav>
-                            <div className="pt-6 border-t border-slate-100">
-                                <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} setInputs={setInputs} />
-                            </div>
-                            <div className="pt-6 mt-auto text-center opacity-70 hover:opacity-100 transition-opacity">
-                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-1">Desarrollado por</p>
-                                <div className="flex items-center justify-center gap-2 text-slate-600"><Code2 size={14} className="text-blue-500" /><span className="font-bold text-xs">Jose Mejia</span></div>
-                            </div>
-                        </div>
-                    </aside>
-
-                    <main className="flex-1 lg:ml-80 h-screen overflow-y-auto bg-slate-50/50">
-                        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 lg:hidden flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="bg-blue-600 p-1.5 rounded-lg"><TrendingDown size={16} className="text-white" /></div>
-                                <div className="flex flex-col"><span className="font-bold text-slate-800 text-sm leading-tight">CrediMaster</span><span className="text-[9px] text-slate-400 font-medium leading-tight">by jm_erazo</span></div>
-                            </div>
-                        </header>
-                        <div className="p-4 md:p-8 md:max-w-6xl md:mx-auto">{renderContent()}</div>
-                    </main>
-
-                    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 pb-safe px-2 py-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                        <div className="flex justify-around items-center">
-                            {navItems.map((item) => (
-                                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === item.id ? 'text-blue-600' : 'text-slate-400'}`}>
-                                    <div className={`p-1 rounded-full mb-1 transition-all ${activeTab === item.id ? 'bg-blue-50 transform -translate-y-1' : ''}`}><item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} /></div>
-                                    <span className="text-[10px] font-medium">{item.label}</span>
+                                <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === 'settings' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                    <div className={`p-1 rounded-full mb-1 transition-all ${activeTab === 'settings' ? 'bg-emerald-50 transform -translate-y-1' : ''}`}><Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} /></div>
+                                    <span className="text-[10px] font-medium">Ajustes</span>
                                 </button>
-                            ))}
-                            <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === 'settings' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                <div className={`p-1 rounded-full mb-1 transition-all ${activeTab === 'settings' ? 'bg-emerald-50 transform -translate-y-1' : ''}`}><Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 2} /></div>
-                                <span className="text-[10px] font-medium">Ajustes</span>
-                            </button>
-                        </div>
-                    </nav>
-                </div>
+                            </div>
+                        </nav>
+                    </div>
+                </ToastProvider>
             );
         };
 
@@ -1493,4 +1536,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
+    </html>
