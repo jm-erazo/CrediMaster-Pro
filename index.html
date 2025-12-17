@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CrediMaster Pro by Jose Mejia</title>
+    <title>CrediMaster Pro v3.0 - Suite Financiera</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -34,7 +34,15 @@
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { background: white; }
-            .letter-paper { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: none !important; }
+            .letter-paper { 
+                box-shadow: none !important; 
+                border: none !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+                width: 100% !important; 
+                max-width: none !important;
+            }
+            @page { margin: 2cm; }
         }
     </style>
 
@@ -62,7 +70,8 @@
             List, ChevronRight, Info, Printer, Sparkles, Bot, Settings, 
             FileText, TrendingDown, TrendingUp, Share2, Copy, Calculator, PiggyBank,
             Coffee, Home, Car, ShoppingBag, Zap, ExternalLink, User, Building2, CreditCard,
-            RotateCcw, CheckCircle2, Code2, Coins, TrendingUp as TrendingUpIcon, FileSearch, Receipt
+            RotateCcw, CheckCircle2, Code2, Coins, TrendingUp as TrendingUpIcon, FileSearch, Receipt,
+            Download, Layers, Percent, AlertCircle, Briefcase, Stamp
         } from 'lucide-react';
         
         import { 
@@ -112,7 +121,8 @@
             highlight = false,
             decimals = 2,
             readOnly = false,
-            negative = false 
+            negative = false,
+            subLabel = null
         }) => {
             const [inputValue, setInputValue] = useState('');
 
@@ -157,15 +167,16 @@
 
             return (
                 <div className={`space-y-2 ${className} ${readOnly ? 'opacity-70 pointer-events-none' : ''}`}>
-                    <label className={`text-xs font-bold uppercase tracking-wide flex flex-wrap justify-between gap-1 items-center ${highlight ? 'text-indigo-600' : (negative ? 'text-emerald-600' : 'text-slate-500')}`}>
-                        <span className="flex items-center gap-1.5">
-                            {Icon && <Icon size={14} className={highlight ? 'text-indigo-500' : (negative ? 'text-emerald-500' : 'text-slate-400')} />}
-                            {label}
-                        </span>
-                        {type === 'percent' && <span className="text-slate-400 font-normal whitespace-nowrap">% E.A.</span>}
-                        {type === 'points' && <span className="text-slate-400 font-normal whitespace-nowrap">Puntos %</span>}
-                        {type === 'uvr' && <span className="text-slate-400 font-normal whitespace-nowrap">Unidad</span>}
-                    </label>
+                    <div className="flex justify-between items-end">
+                        <label className={`text-xs font-bold uppercase tracking-wide flex flex-wrap gap-1 items-center ${highlight ? 'text-indigo-600' : (negative ? 'text-emerald-600' : 'text-slate-500')}`}>
+                            <span className="flex items-center gap-1.5">
+                                {Icon && <Icon size={14} className={highlight ? 'text-indigo-500' : (negative ? 'text-emerald-500' : 'text-slate-400')} />}
+                                {label}
+                            </span>
+                        </label>
+                        {(type === 'percent' || type === 'points') && <span className="text-[10px] text-slate-400 font-normal">% E.A. / Puntos</span>}
+                        {type === 'uvr' && <span className="text-[10px] text-slate-400 font-normal">Unidad</span>}
+                    </div>
                     <div className="relative group">
                         {type === 'currency' && (
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -198,6 +209,7 @@
                             </div>
                         )}
                     </div>
+                    {subLabel && <p className="text-[10px] text-slate-400 leading-tight">{subLabel}</p>}
                 </div>
             );
         };
@@ -213,12 +225,11 @@
             </div>
         );
 
-        // --- COMPONENTE INPUTS (MEJORADO) ---
+        // --- COMPONENTE INPUTS ---
         const CreditParametersForm = ({ inputs, handleInputChange, setInputs, className = "" }) => {
             
-            // --- NUEVA LÓGICA: Sincronización UVR/Pesos ---
+            // Sincronización UVR/Pesos
             const handleUVRUnitBalanceChange = (newUVRBalance) => {
-                // Si usuario edita unidades, calculamos pesos exactos
                 setInputs(prev => ({
                     ...prev,
                     loanAmountUVR: newUVRBalance,
@@ -230,12 +241,11 @@
                 setInputs(prev => ({
                     ...prev,
                     uvrValue: newUVRValue,
-                    loanAmount: prev.loanAmountUVR * newUVRValue // Recalcular pesos
+                    loanAmount: prev.loanAmountUVR * newUVRValue
                 }));
             };
 
             const handlePesoBalanceChange = (newPesoBalance) => {
-                // Si edita pesos (en modo normal)
                 setInputs(prev => ({
                     ...prev,
                     loanAmount: newPesoBalance,
@@ -273,11 +283,11 @@
                             <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl space-y-3 animate-in fade-in relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-2 opacity-5"><FileSearch size={100}/></div>
                                 <div className="flex items-center gap-2 text-purple-800 font-bold text-xs uppercase mb-1 relative z-10">
-                                    <FileSearch size={14} /> Variables UVR (Exactitud Extracto)
+                                    <FileSearch size={14} /> Variables UVR (Precisión)
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
                                     <NumericInput 
-                                        label="Saldo Capital (Unidades UVR)" 
+                                        label="Saldo Capital (UVR)" 
                                         type="uvr"
                                         value={inputs.loanAmountUVR} 
                                         onChange={handleUVRUnitBalanceChange}
@@ -293,7 +303,7 @@
                                         decimals={4}
                                     />
                                 </div>
-                                <div className="relative z-10">
+                                <div className="relative z-10 grid grid-cols-1 gap-3">
                                      <NumericInput 
                                         label="Inflación Estimada (Anual)" 
                                         type="percent"
@@ -309,7 +319,7 @@
                             label={inputs.isUVR ? "Saldo Capital (Pesos Calculado)" : "Saldo Deuda Actual (Pesos)"}
                             value={inputs.loanAmount} 
                             onChange={handlePesoBalanceChange}
-                            readOnly={inputs.isUVR} // En UVR se calcula automático para evitar errores
+                            readOnly={inputs.isUVR} 
                             highlight={!inputs.isUVR}
                         />
                         
@@ -318,7 +328,7 @@
                                 Recomendado
                             </div>
                             <NumericInput 
-                                label="Valor Cuota Extracto Total (Pesos)" 
+                                label="Valor Cuota Extracto Total" 
                                 value={inputs.currentQuota} 
                                 onChange={(v) => handleInputChange('currentQuota', v)} 
                                 highlight={true}
@@ -326,7 +336,7 @@
                                 placeholder="Ej: 2.500.000"
                             />
                             <p className="text-[10px] text-indigo-500/80 mt-1.5 leading-tight px-1">
-                                Ingresa el valor exacto de tu factura para calibrar el simulador.
+                                Ingresa el valor exacto de tu factura (incluyendo seguros) para calibrar el simulador.
                             </p>
                         </div>
 
@@ -346,7 +356,7 @@
                             />
                         </div>
 
-                        {/* --- NUEVA SECCIÓN: FRECH --- */}
+                        {/* SECCIÓN FRECH */}
                         <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 space-y-3">
                             <ToggleSwitch 
                                 label={<span className="text-xs font-bold text-emerald-800">Tiene Subsidio FRECH / Ecobertura?</span>}
@@ -356,7 +366,7 @@
                             {inputs.hasFrech && (
                                 <div className="animate-in fade-in">
                                     <NumericInput 
-                                        label="Puntos de Subsidio (Sobre Tasa)"
+                                        label="Puntos de Subsidio"
                                         type="points"
                                         value={inputs.frechPoints} 
                                         onChange={(v) => handleInputChange('frechPoints', v)}
@@ -371,11 +381,19 @@
                             )}
                         </div>
 
-                        <NumericInput 
-                            label="Seguros / Otros (Mensual Pesos)" 
-                            value={inputs.insurance} 
-                            onChange={(v) => handleInputChange('insurance', v)} 
-                        />
+                        <div className="space-y-3 p-3 border border-slate-100 rounded-xl bg-slate-50">
+                            <NumericInput 
+                                label="Seguros / Otros (Mensual Actual)" 
+                                value={inputs.insurance} 
+                                onChange={(v) => handleInputChange('insurance', v)} 
+                            />
+                            <ToggleSwitch 
+                                label={<span className="text-xs font-semibold text-slate-600 block">Proyectar Aumento Seguros (IPC) <span className="text-[10px] text-slate-400 font-normal block mt-0.5">El seguro subirá cada año con la inflación</span></span>}
+                                checked={inputs.insuranceIndexed}
+                                onChange={(v) => handleInputChange('insuranceIndexed', v)}
+                                activeColor="bg-slate-800"
+                            />
+                        </div>
                     </div>
 
                     <div className="bg-emerald-50/80 p-5 rounded-2xl border border-emerald-100 space-y-4 shadow-sm">
@@ -391,8 +409,23 @@
                             onChange={(v) => handleInputChange('extraMonthly', v)} 
                             className="[&_input]:bg-white [&_input]:border-emerald-200 [&_input]:text-emerald-800 [&_input]:focus:ring-emerald-200 [&_input]:focus:border-emerald-500"
                         />
+                        
+                        {/* INCREMENTO ANUAL */}
+                        <div className="grid grid-cols-12 gap-3 items-end">
+                            <div className="col-span-12">
+                                <NumericInput 
+                                    label="Incrementar Abono Anualmente" 
+                                    type="percent"
+                                    value={inputs.annualIncrease} 
+                                    onChange={(v) => handleInputChange('annualIncrease', v)} 
+                                    subLabel="Aumenta tu abono cada año (Efecto Bola de Nieve)"
+                                    className="[&_input]:bg-white"
+                                />
+                            </div>
+                        </div>
+
                         <ToggleSwitch 
-                            label={<span className="text-xs font-semibold text-slate-600 block">Usar Primas (Jun/Dic) <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Duplica el abono extra</span></span>}
+                            label={<span className="text-xs font-semibold text-slate-600 block">Usar Primas (Jun/Dic) <span className="text-[10px] text-slate-400 font-normal block mt-0.5">Duplica el abono extra estos meses</span></span>}
                             checked={inputs.usePrimas}
                             onChange={(v) => handleInputChange('usePrimas', v)}
                         />
@@ -406,39 +439,37 @@
             );
         };
 
-        // --- LÓGICA DE NEGOCIO (ACTUALIZADA FRECH + UVR EXACTO) ---
+        // --- LÓGICA DE NEGOCIO AVANZADA ---
 
         const calculateEngine = (params) => {
             const { 
                 loanAmount, loanAmountUVR, rateEA, months, insurance, extraMonthly, 
                 usePrimas, oneTimePayment, currentQuota, 
                 isUVR, uvrValue, inflation,
-                hasFrech, frechPoints // Nuevos Params
+                hasFrech, frechPoints,
+                annualIncrease = 0, // Incremento anual de abono
+                insuranceIndexed = true // Seguro indexado
             } = params;
             
             if (!loanAmount || !rateEA || (isUVR && !uvrValue)) return null;
 
             // 1. Definición de Tasas
             const rateMonthlyFull = Math.pow(1 + rateEA / 100, 1 / 12) - 1;
-            
-            // Tasa Cliente (Si hay FRECH, restamos puntos a la EA)
             const clientRateEA = hasFrech ? Math.max(0, rateEA - frechPoints) : rateEA;
             const rateMonthlyClient = Math.pow(1 + clientRateEA / 100, 1 / 12) - 1;
-
-            const inflationMonthly = isUVR ? (Math.pow(1 + inflation / 100, 1 / 12) - 1) : 0;
+            const inflationMonthly = isUVR || insuranceIndexed ? (Math.pow(1 + inflation / 100, 1 / 12) - 1) : 0;
 
             // --- INICIALIZACIÓN ---
-            // Prioridad: Si es UVR y tenemos unidades exactas, usamos eso. Si no, calculamos.
             let balanceBaseUVR = isUVR ? (loanAmountUVR > 0 ? loanAmountUVR : loanAmount / uvrValue) : loanAmount;
             
             if(isUVR && (!loanAmountUVR || loanAmountUVR === 0)) {
                 balanceBaseUVR = loanAmount / uvrValue;
             }
 
-            let balanceStrategyUVR = balanceBaseUVR;
+            let balanceStrategyUnit = balanceBaseUVR;
             let currentUVR = isUVR ? uvrValue : 1; 
 
-            // Cálculo de Cuota Base usando TASA CLIENTE (lo que realmente paga el usuario)
+            // Cálculo de Cuota Base
             let pmtFixedUnit; 
             let pmtTotalObligatoryDisplay; 
             let isManualQuota = false;
@@ -455,7 +486,7 @@
                 pmtTotalObligatoryDisplay = currentQuota;
             } else {
                 if (!months) return null;
-                // Fórmula Francesa con Tasa Cliente
+                // Fórmula Francesa
                 pmtFixedUnit = balanceBaseUVR * (rateMonthlyClient * Math.pow(1 + rateMonthlyClient, months)) / (Math.pow(1 + rateMonthlyClient, months) - 1);
                 
                 const firstMonthPaymentPesos = isUVR 
@@ -465,63 +496,81 @@
                 pmtTotalObligatoryDisplay = firstMonthPaymentPesos;
             }
 
-            // --- SIMULACIÓN ESTRATEGIA (CON ABONOS + FRECH) ---
+            // --- SIMULACIÓN ESTRATEGIA ---
             let schedule = [];
-            let totalInterestPaidPesos = 0; // Neto pagado por cliente
+            let totalInterestPaidPesos = 0; 
             let totalFrechBenefitPesos = 0; 
             let currentMonth = 0;
             const SAFE_LIMIT = 600; 
 
-            let tempBalanceUnit = balanceStrategyUVR;
+            let tempBalanceUnit = balanceStrategyUnit;
             let tempUVR = currentUVR;
+            let currentInsurance = insurance;
+            let currentExtraMonthly = extraMonthly; // Variable para incremento anual
 
             // Gráfica
             const graphData = [];
             graphData.push({
                 mes: 0,
                 deudaBanco: Math.round(isUVR ? balanceBaseUVR * uvrValue : loanAmount),
-                deudaEstrategia: Math.round(isUVR ? balanceStrategyUVR * uvrValue : loanAmount),
+                deudaEstrategia: Math.round(isUVR ? balanceStrategyUnit * uvrValue : loanAmount),
             });
 
-            // Simulación Banco paralela (simple)
+            // Simulación Banco paralela
             let balanceBancoUnit = balanceBaseUVR;
             let uvrBanco = currentUVR;
+            let insuranceBanco = insurance;
             const scheduleBanco = [];
-            let totalInterestBancoPesos = 0; // Neto cliente sin abonos
+            let totalInterestBancoPesos = 0; 
+            let totalInsuranceBanco = 0;
 
-            while (tempBalanceUnit > (isUVR ? 0.5 : 100) && currentMonth < SAFE_LIMIT) {
+            while (tempBalanceUnit > (isUVR ? 0.01 : 100) && currentMonth < SAFE_LIMIT) {
                 currentMonth++;
                 
-                // 1. Inflación UVR
+                // Actualización Inflación
                 if (isUVR) {
                     tempUVR = tempUVR * (1 + inflationMonthly);
                     uvrBanco = uvrBanco * (1 + inflationMonthly);
                 }
+
+                // Actualización Seguros (Anual o mensual progresivo para suavizar)
+                if (insuranceIndexed) {
+                    currentInsurance = currentInsurance * (1 + inflationMonthly);
+                    insuranceBanco = insuranceBanco * (1 + inflationMonthly);
+                }
+
+                // Incremento Anual de Abono Extra (Bola de Nieve)
+                if (currentMonth > 1 && currentMonth % 12 === 1 && annualIncrease > 0) {
+                    currentExtraMonthly = currentExtraMonthly * (1 + (annualIncrease / 100));
+                }
                 
                 // --- LÓGICA ESTRATEGIA ---
 
-                // 2. Intereses (Sobre saldo en Unidades)
+                // Intereses
                 const interestFullUnit = tempBalanceUnit * rateMonthlyFull;
                 const interestClientUnit = tempBalanceUnit * rateMonthlyClient;
                 const frechSubsidyUnit = Math.max(0, interestFullUnit - interestClientUnit);
 
-                // 3. Capital Ordinario (Cuota Fija - Interés Cliente)
+                // Capital Ordinario
                 let capitalOrdinaryUnit = pmtFixedUnit - interestClientUnit;
                 if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0;
 
-                // 4. Abonos Extras
-                let paymentExtraPesos = extraMonthly;
-                if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) paymentExtraPesos += extraMonthly; 
+                // Abonos Extras
+                let paymentExtraPesos = currentExtraMonthly;
+                if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) {
+                    paymentExtraPesos += currentExtraMonthly; 
+                }
                 if (currentMonth === 1) paymentExtraPesos += oneTimePayment;
 
                 let paymentExtraUnit = isUVR ? (paymentExtraPesos / tempUVR) : paymentExtraPesos;
 
-                // 5. Aplicar
+                // Aplicar
                 let capitalTotalUnit = capitalOrdinaryUnit + paymentExtraUnit;
 
-                // Ajuste fin de deuda
+                // Ajuste preciso fin de deuda
                 if (capitalTotalUnit > tempBalanceUnit) {
-                    capitalTotalUnit = tempBalanceUnit;
+                    capitalTotalUnit = tempBalanceUnit; // Matar saldo exacto
+                    // Recalcular componentes
                     if (tempBalanceUnit < capitalOrdinaryUnit) {
                          capitalOrdinaryUnit = tempBalanceUnit;
                          paymentExtraUnit = 0;
@@ -531,14 +580,21 @@
                 }
 
                 tempBalanceUnit -= capitalTotalUnit;
+                // Corrección flotante JS
+                if(tempBalanceUnit < (isUVR ? 0.0001 : 1)) tempBalanceUnit = 0;
                 
                 // --- LÓGICA BANCO (Comparativo) ---
-                if (balanceBancoUnit > (isUVR ? 0.5 : 100)) {
+                if (balanceBancoUnit > (isUVR ? 0.01 : 100)) {
                     const intBancoClientUnit = balanceBancoUnit * rateMonthlyClient;
                     let capBancoUnit = pmtFixedUnit - intBancoClientUnit;
+                    
                     if (capBancoUnit > balanceBancoUnit) capBancoUnit = balanceBancoUnit;
+                    
                     balanceBancoUnit -= capBancoUnit;
+                    if(balanceBancoUnit < (isUVR ? 0.0001 : 1)) balanceBancoUnit = 0;
+
                     totalInterestBancoPesos += (isUVR ? intBancoClientUnit * uvrBanco : intBancoClientUnit);
+                    totalInsuranceBanco += insuranceBanco;
                 }
                 scheduleBanco.push(isUVR ? balanceBancoUnit * uvrBanco : balanceBancoUnit);
 
@@ -552,7 +608,7 @@
                 const paymentExtraAppliedPesos = isUVR ? paymentExtraUnit * tempUVR : paymentExtraUnit;
                 const balancePesos = isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit;
                 
-                const totalPaymentPocketPesos = capitalTotalPesos + interestClientPesos + insurance;
+                const totalPaymentPocketPesos = capitalTotalPesos + interestClientPesos + currentInsurance;
 
                 totalInterestPaidPesos += interestClientPesos;
                 totalFrechBenefitPesos += frechSubsidyPesos;
@@ -562,20 +618,17 @@
                     paymentTotal: totalPaymentPocketPesos,
                     capitalOrdinary: capitalOrdinaryPesos,
                     capitalTotal: capitalTotalPesos,
-                    // Campos nuevos para mostrar detalle
                     interestFull: interestFullPesos,
                     frechBenefit: frechSubsidyPesos,
-                    interest: interestClientPesos, // Mantengo nombre 'interest' para compatibilidad
-                    interestNet: interestClientPesos, 
-                    
-                    insurance: insurance,
+                    interestNet: interestClientPesos,
+                    insurance: currentInsurance,
                     balance: balancePesos > 1 ? balancePesos : 0,
                     extraApplied: paymentExtraAppliedPesos,
                     uvrUnitValue: isUVR ? tempUVR : null
                 });
 
                 // Gráfica Sampling
-                if (currentMonth % 3 === 0 || tempBalanceUnit <= (isUVR?0.5:100) || currentMonth === 1) {
+                if (currentMonth % 3 === 0 || tempBalanceUnit <= 0 || currentMonth === 1) {
                     graphData.push({
                         mes: currentMonth,
                         deudaBanco: Math.round(scheduleBanco[currentMonth-1] || 0),
@@ -584,6 +637,7 @@
                 }
             }
 
+            // Relleno gráfica si terminó antes
             if (currentMonth < months) {
                 graphData.push({
                     mes: months,
@@ -592,8 +646,15 @@
                 });
             }
 
-            const totalPaymentOriginalPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestBancoPesos + (insurance * months);
-            const totalPaymentNewPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + totalFrechBenefitPesos; // Ajuste para consistencia métrica
+            // Totales con seguros dinámicos
+            const totalInsurancePaid = schedule.reduce((sum, row) => sum + row.insurance, 0);
+            
+            // Cálculo costo total original (estimado banco)
+            const totalPaymentOriginalPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestBancoPesos + totalInsuranceBanco;
+            const totalPaymentNewPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + totalInsurancePaid; 
+
+            // Multiplicador de costo (TCC Ratio)
+            const costMultiplier = totalPaymentNewPesos / (isUVR ? balanceBaseUVR * uvrValue : loanAmount);
 
             return {
                 metrics: {
@@ -602,22 +663,24 @@
                     monthsSaved: Math.max(0, months - schedule.length),
                     interestSaved: Math.max(0, totalInterestBancoPesos - totalInterestPaidPesos),
                     totalPaymentOriginal: totalPaymentOriginalPesos,
-                    totalPaymentNew: (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + (insurance * schedule.length),
+                    totalPaymentNew: totalPaymentNewPesos,
                     monthlyObligatory: pmtTotalObligatoryDisplay,
-                    monthlyTotalEffort: pmtTotalObligatoryDisplay + extraMonthly, 
-                    effortIncreasePct: (extraMonthly / pmtTotalObligatoryDisplay) * 100,
+                    monthlyTotalEffort: schedule[0]?.paymentTotal || 0, 
+                    effortIncreasePct: ((schedule[0]?.paymentTotal - pmtTotalObligatoryDisplay) / pmtTotalObligatoryDisplay) * 100,
                     timeReductionPct: months > 0 ? ((months - schedule.length) / months) * 100 : 0,
                     isManualQuota,
                     isUVR,
-                    hasFrech, // Nuevo flag para UI
-                    totalFrechBenefit: totalFrechBenefitPesos
+                    hasFrech,
+                    totalFrechBenefit: totalFrechBenefitPesos,
+                    costMultiplier,
+                    insuranceIndexed
                 },
                 graphData,
                 schedule
             };
         };
 
-        // --- VISTAS (RESTORED EXACTLY FROM V2 + FRECH UPDATES) ---
+        // --- VISTAS ---
 
         const BudgetView = ({ onApplyExtra }) => {
             const [finances, setFinances] = useState({
@@ -789,14 +852,19 @@
                             </div>
                         </div>
 
+                        {/* TCC - INDICADOR MEJORADO */}
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between min-h-[160px]">
                             <div>
-                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Total a Pagar</p>
-                                <h3 className="text-2xl font-extrabold text-slate-700 break-words">{formatCurrency(metrics.totalPaymentNew)}</h3>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Costo Total Crédito</p>
+                                <div className="flex items-baseline gap-1">
+                                    <h3 className="text-2xl font-extrabold text-slate-800 break-words">{metrics.costMultiplier.toFixed(2)}x</h3>
+                                    <span className="text-xs text-slate-400 font-medium">veces lo prestado</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1">Total: {formatCurrency(metrics.totalPaymentNew)}</p>
                             </div>
                             <div className="mt-auto pt-4 flex items-center w-full">
                                 <div className="text-xs font-medium text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center w-full">
-                                    <DollarSign size={14} className="mr-1.5 shrink-0" /> <span className="truncate">Antes: <span className="line-through decoration-rose-400">{formatCurrency(metrics.totalPaymentOriginal)}</span></span>
+                                    <DollarSign size={14} className="mr-1.5 shrink-0" /> <span className="truncate">Antes: {formatCurrency(metrics.totalPaymentOriginal)}</span>
                                 </div>
                             </div>
                         </div>
@@ -813,7 +881,7 @@
                             <div className="mt-auto pt-4 text-xs text-indigo-50 leading-relaxed font-medium border-t border-white/10">
                                 {metrics.isUVR 
                                     ? "En UVR, abonar capital es vital. Tu abono amortigua la inflación y evita que la deuda crezca exponencialmente."
-                                    : `Por cada $1,000 extra, ahorras ${formatCurrency((metrics.interestSaved / (metrics.monthlyTotalEffort * metrics.newTerm - metrics.monthlyObligatory * metrics.newTerm) * 1000 || 0))} en intereses futuros.`
+                                    : `Estás ahorrando ${formatCurrency(metrics.interestSaved)}. Eso equivale a ${(metrics.interestSaved / 1300000).toFixed(1)} salarios mínimos actuales.`
                                 }
                             </div>
                         </div>
@@ -824,7 +892,7 @@
                         <div className="flex-1 w-full relative z-10">
                             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
                                 <span className="w-2 h-2 rounded-full bg-slate-300 mr-2"></span>
-                                Pago Mínimo {metrics.isUVR ? "(Estimado)" : "(Banco)"}
+                                Pago Inicial Estimado
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <h3 className="text-2xl lg:text-3xl font-bold text-slate-700">{formatCurrency(metrics.monthlyObligatory)}</h3>
@@ -838,13 +906,13 @@
                         <div className="flex-1 w-full relative z-10">
                             <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-                                Nuevo Aporte Total
+                                Tu Nueva Cuota Potente
                             </p>
                             <div className="flex items-baseline gap-2">
                                 <h3 className="text-2xl lg:text-3xl font-bold text-emerald-600">{formatCurrency(metrics.monthlyTotalEffort)}</h3>
                                 <span className="text-xs text-emerald-600/60 font-medium">/mes</span>
                             </div>
-                            <p className="text-xs text-emerald-600/70 mt-1 pl-4">Incluye tu abono inteligente</p>
+                            <p className="text-xs text-emerald-600/70 mt-1 pl-4">Incluye abono inteligente</p>
                         </div>
                         <div className="w-full sm:w-auto bg-slate-50 rounded-xl p-4 border border-slate-100 min-w-[200px]">
                             <div className="flex items-center justify-between mb-2">
@@ -896,7 +964,7 @@
                         </div>
                         {metrics.isUVR && (
                              <p className="text-[10px] text-slate-400 mt-2 text-center italic">
-                                * Nota: En UVR, el saldo en pesos aumenta si la inflación supera a tu abono a capital (incluso con abonos extra al inicio).
+                                * Nota UVR: El gráfico muestra el saldo convertido a pesos. Si la inflación es alta, el saldo en pesos puede subir aunque abones capital, hasta que tu abono supere el ajuste inflacionario.
                              </p>
                         )}
                     </div>
@@ -909,6 +977,7 @@
             const [personalData, setPersonalData] = useState({
                 name: "",
                 cc: "",
+                phone: "",
                 bank: "",
                 creditNumber: "",
                 city: "Bogotá D.C."
@@ -918,7 +987,7 @@
             const handleCopy = () => {
                 if (letterRef.current) {
                     navigator.clipboard.writeText(letterRef.current.innerText);
-                    alert("Texto copiado.");
+                    alert("Texto copiado al portapapeles.");
                 }
             };
 
@@ -929,44 +998,113 @@
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 relative overflow-hidden no-print">
                         <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck size={120} className="text-amber-600"/></div>
                         <div className="relative z-10">
-                            <h2 className="text-lg font-bold text-amber-900 mb-2">Ley de Vivienda 546 de 1999</h2>
-                            <p className="text-amber-800 text-sm mb-4">Derecho irrenunciable al prepago sin penalidad.</p>
-                            <a href="https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=398" target="_blank" className="text-xs font-bold text-amber-700 underline">Ver Norma Completa</a>
+                            <h2 className="text-lg font-bold text-amber-900 mb-2">Generador de Documentos Jurídicos</h2>
+                            <p className="text-amber-800 text-sm mb-4">Esta carta está blindada jurídicamente con la Ley 546 de 1999 para garantizar que tu abono se aplique correctamente.</p>
                         </div>
                     </div>
 
                     <div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <div className="no-print grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 border-b border-slate-100 pb-8">
-                             <input type="text" name="city" placeholder="Ciudad" value={personalData.city} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
-                             <input type="text" name="bank" placeholder="Nombre Banco" value={personalData.bank} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
-                             <input type="text" name="name" placeholder="Tu Nombre Completo" value={personalData.name} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
-                             <input type="text" name="cc" placeholder="Tu Cédula" value={personalData.cc} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
-                             <input type="text" name="creditNumber" placeholder="Número Crédito" value={personalData.creditNumber} onChange={handleChange} className="p-2 border rounded-lg text-sm" />
+                        <div className="no-print space-y-4 mb-8 border-b border-slate-100 pb-8">
+                             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">1. Tus Datos</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" name="city" placeholder="Ciudad (Ej: Bogotá D.C.)" value={personalData.city} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <input type="text" name="bank" placeholder="Nombre del Banco" value={personalData.bank} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <input type="text" name="name" placeholder="Nombre del Titular" value={personalData.name} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <input type="text" name="cc" placeholder="Cédula de Ciudadanía" value={personalData.cc} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <input type="text" name="phone" placeholder="Celular / Contacto" value={personalData.phone} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <input type="text" name="creditNumber" placeholder="Número del Crédito" value={personalData.creditNumber} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                             </div>
+                             
+                             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mt-4">2. ¿Qué quieres lograr?</h3>
+                             <div className="flex gap-4">
+                                <button onClick={() => setType("plazo")} className={`flex-1 p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2 ${type === 'plazo' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
+                                    <Target size={24} />
+                                    REDUCIR PLAZO (Recomendado)
+                                    <span className="text-[10px] font-normal opacity-80 text-center">Terminas antes, ahorras más intereses. La cuota sigue igual.</span>
+                                </button>
+                                <button onClick={() => setType("cuota")} className={`flex-1 p-4 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center gap-2 ${type === 'cuota' ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
+                                    <Wallet size={24} />
+                                    REDUCIR CUOTA
+                                    <span className="text-[10px] font-normal opacity-80 text-center">Baja el pago mensual. El plazo sigue igual. Libera flujo de caja hoy.</span>
+                                </button>
+                            </div>
                         </div>
                         
-                        <div className="no-print flex gap-4 mb-4">
-                            <button onClick={() => setType("plazo")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'plazo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}`}>Reducir Plazo</button>
-                            <button onClick={() => setType("cuota")} className={`px-4 py-2 rounded-md text-sm font-bold ${type === 'cuota' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100'}`}>Reducir Cuota</button>
-                        </div>
-                        
-                        <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-8 md:bg-gray-100 mb-6">
+                        <div className="overflow-x-auto bg-slate-50 rounded-xl p-2 md:p-8 md:bg-gray-100 mb-6 border border-slate-200">
                             <div ref={letterRef} className="letter-paper font-serif text-slate-900 leading-relaxed max-w-[21.59cm] mx-auto bg-white min-h-[27.94cm] p-[2.5cm] shadow-xl text-justify text-[11pt]">
-                                <p className="mb-8 text-right">{personalData.city || "Ciudad"}, {new Date().toLocaleDateString()}</p>
-                                <p className="mb-6">Señores<br/><strong>{personalData.bank || "[BANCO]"}</strong></p>
-                                <p className="mb-4">Ref: Solicitud Abono Extraordinario - Crédito {personalData.creditNumber || "___________"}</p>
-                                <p className="mb-4">De conformidad con la Ley 546 de 1999, solicito aplicar el abono de <strong>{formatCurrency(inputs.extraMonthly)}</strong> a capital para: <strong>{type === 'plazo' ? "REDUCIR PLAZO" : "REDUCIR CUOTA"}</strong>.</p>
-                                <br/><br/>
-                                <p>Cordialmente,</p>
-                                <br/><br/>
-                                <p className="font-bold">__________________________</p>
-                                <p>{personalData.name || "Titular"}</p>
-                                <p>C.C. {personalData.cc || "___________"}</p>
+                                <p className="mb-8">{personalData.city || "Ciudad"}, {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                
+                                <p className="mb-2">Señores</p>
+                                <p className="mb-2 font-bold uppercase">{personalData.bank || "[NOMBRE DEL BANCO]"}</p>
+                                <p className="mb-6">Departamento de Cartera / Crédito Hipotecario<br/>E. S. D.</p>
+                                
+                                <p className="mb-6 text-right font-bold text-sm">
+                                    REF: DERECHO DE PETICIÓN - ABONO EXTRAORDINARIO A CAPITAL<br/>
+                                    Crédito No. {personalData.creditNumber || "___________"}<br/>
+                                    Titular: {personalData.name || "[NOMBRE DEL TITULAR]"}
+                                </p>
+                                
+                                <p className="mb-4">Respetados señores:</p>
+                                
+                                <p className="mb-4">
+                                    Yo, <strong>{personalData.name || "____________________"}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>{personalData.cc || "___________"}</strong>, 
+                                    en mi calidad de deudor del crédito de la referencia, acudo a ustedes para manifestar mi voluntad de realizar un <strong>ABONO EXTRAORDINARIO A CAPITAL</strong> 
+                                    por valor de <strong>{formatCurrency(inputs.extraMonthly)}</strong> (o la suma que efectivamente consigne).
+                                </p>
+                                
+                                <p className="mb-4">
+                                    De conformidad con lo establecido en la <strong>Ley 546 de 1999 (Ley de Vivienda), Artículo 17, Numeral 8</strong>, 
+                                    los deudores de créditos de vivienda tenemos el derecho irrenunciable a prepagar total o parcialmente nuestras obligaciones 
+                                    <strong>sin penalidad alguna</strong>.
+                                </p>
+
+                                <p className="mb-4">
+                                    En ejercicio de este derecho, solicito expresamente que este dinero se aplique de la siguiente manera:
+                                </p>
+
+                                <div className="ml-8 mb-6 p-4 border-l-4 border-black bg-slate-50 italic">
+                                    {type === 'plazo' ? (
+                                        <>
+                                            <strong>OPCIÓN ELEGIDA: REDUCCIÓN DE PLAZO.</strong><br/>
+                                            Solicito que el abono ingrese directamente al capital de la deuda manteniendo el valor de la cuota actual constante, 
+                                            con el fin de <strong>disminuir el número de cuotas restantes</strong> (Reducción de Plazo).
+                                        </>
+                                    ) : (
+                                        <>
+                                            <strong>OPCIÓN ELEGIDA: REDUCCIÓN DEL CANON/CUOTA.</strong><br/>
+                                            Solicito que el abono ingrese directamente al capital de la deuda manteniendo el plazo actual constante, 
+                                            con el fin de <strong>disminuir el valor mensual de la cuota futura</strong> (Reducción de Cuota).
+                                        </>
+                                    )}
+                                </div>
+
+                                <p className="mb-4">
+                                    Aclaro que este pago <strong>NO debe ser tomado como un adelanto de cuotas futuras</strong>, sino como una amortización extraordinaria 
+                                    al saldo de capital vigente al momento del pago, tal como lo ordena la Circular Básica Jurídica de la Superintendencia Financiera de Colombia.
+                                </p>
+
+                                <p className="mb-12">
+                                    Quedo a la espera de la confirmación de la aplicación de este pago y el nuevo plan de pagos proyectado.
+                                    <br/><br/>
+                                    Atentamente,
+                                </p>
+
+                                <br/>
+                                <div className="border-t border-black w-64 pt-2">
+                                    <p className="font-bold">{personalData.name || "Firma"}</p>
+                                    <p>C.C. {personalData.cc || "___________"}</p>
+                                    <p>Tel: {personalData.phone || "___________"}</p>
+                                </div>
                             </div>
                         </div>
                         
                         <div className="flex gap-4 no-print">
-                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold">Copiar Texto</button>
-                            <button onClick={() => window.print()} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold">Imprimir PDF</button>
+                            <button onClick={handleCopy} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+                                <Copy size={18} /> Copiar Texto
+                            </button>
+                            <button onClick={() => window.print()} className="flex-1 border border-slate-200 py-3 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                                <Printer size={18} /> Imprimir / Guardar PDF
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -981,14 +1119,15 @@
                 rateEA: 13.5,
                 months: 240,
                 insurance: 65000,
+                insuranceIndexed: true, // Nuevo: Seguros suben con inflacion
                 extraMonthly: 400000,
+                annualIncrease: 0, // Nuevo: Incremento anual abono
                 oneTimePayment: 0,
                 usePrimas: true,
                 currentQuota: 0,
                 isUVR: false,
                 uvrValue: 360.5432,
                 inflation: 4.5,
-                // Estado Nuevo FRECH
                 hasFrech: false,
                 frechPoints: 4.0
             });
@@ -1018,23 +1157,62 @@
             const handleGenerateReport = async () => {
                 setIsGeneratingReport(true);
                 setTimeout(() => {
-                    setAiReport("Análisis IA Simulado: Gran estrategia. Mantener el abono extra reduce significativamente los intereses.");
+                    const savings = formatCurrency(results.metrics.interestSaved);
+                    const time = Math.floor(results.metrics.monthsSaved / 12) + " años";
+                    setAiReport(`Análisis Inteligente: Tu estrategia es sólida. Estás ahorrando ${savings} en intereses y reduciendo tu deuda en ${time}. La funcionalidad de 'Bola de Nieve' con el incremento anual está acelerando tu libertad financiera exponencialmente.`);
                     setIsGeneratingReport(false);
                 }, 1500);
             };
 
+            // Función Exportar CSV Mejorada
+            const downloadCSV = () => {
+                if(!results || !results.schedule) return;
+                
+                const headers = ["Mes", "Cuota Total", "Interes Full", "Alivio Frech", "Interes Neto", "Seguros", "Abono Capital Base", "Abono Extra", "Total Abono Capital", "Saldo Pesos"];
+                const rows = results.schedule.map(row => [
+                    row.month,
+                    Math.round(row.paymentTotal),
+                    Math.round(row.interestFull),
+                    Math.round(row.frechBenefit),
+                    Math.round(row.interestNet),
+                    Math.round(row.insurance),
+                    Math.round(row.capitalOrdinary),
+                    Math.round(row.extraApplied),
+                    Math.round(row.capitalTotal),
+                    Math.round(row.balance)
+                ]);
+
+                const csvContent = "data:text/csv;charset=utf-8," 
+                    + headers.join(",") + "\n" 
+                    + rows.map(e => e.join(",")).join("\n");
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "proyeccion_credito_detallada.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
             const renderContent = () => {
-                if (!results) return <div className="p-10 text-center text-slate-400">Cargando motor financiero...</div>;
+                if (!results) return <div className="p-10 text-center text-slate-400">Cargando motor financiero v3.0...</div>;
 
                 switch(activeTab) {
                     case 'dashboard': return <DashboardView metrics={results.metrics} graphData={results.graphData} />;
                     case 'budget': return <BudgetView onApplyExtra={handleApplyBudget} />;
                     case 'advisor': return (
                          <div className="max-w-2xl mx-auto space-y-6 pb-24 lg:pb-0 animate-in fade-in">
-                            <div className="bg-indigo-900 rounded-3xl p-8 text-white text-center">
-                                <h2 className="text-2xl font-bold mb-4">IA Advisor</h2>
-                                <button onClick={handleGenerateReport} className="bg-white text-indigo-900 px-6 py-2 rounded-full font-bold">Generar Reporte</button>
-                                {aiReport && <div className="mt-4 text-left bg-white/10 p-4 rounded-xl">{aiReport}</div>}
+                            <div className="bg-indigo-900 rounded-3xl p-8 text-white text-center relative overflow-hidden">
+                                <div className="relative z-10">
+                                    <h2 className="text-2xl font-bold mb-4">IA Advisor Pro</h2>
+                                    <p className="text-indigo-200 mb-6 text-sm">Analiza tu flujo de caja y estrategia de amortización para darte recomendaciones personalizadas.</p>
+                                    <button onClick={handleGenerateReport} className="bg-white text-indigo-900 px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform flex items-center mx-auto gap-2">
+                                        <Sparkles size={18} /> Generar Reporte
+                                    </button>
+                                    {aiReport && <div className="mt-6 text-left bg-white/10 p-5 rounded-xl border border-white/10 text-sm leading-relaxed animate-in fade-in">{aiReport}</div>}
+                                </div>
+                                <div className="absolute top-0 right-0 opacity-10 p-10"><BrainCircuit size={150}/></div>
                             </div>
                         </div>
                     );
@@ -1042,39 +1220,54 @@
                         return (
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden pb-20 lg:pb-0 animate-in fade-in">
                                 <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-700">Tabla de Amortización {inputs.isUVR ? "(Proyección Pesos)" : ""}</h3>
-                                    {inputs.isUVR && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">Modo UVR</span>}
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-slate-700">Tabla Detallada</h3>
+                                        {inputs.isUVR && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold uppercase">UVR Proyectado</span>}
+                                    </div>
+                                    <button onClick={downloadCSV} className="text-xs flex items-center gap-1 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-200 transition-colors font-bold">
+                                        <Download size={14} /> Exportar Excel
+                                    </button>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm text-left">
                                         <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                                             <tr>
-                                                <th className="px-4 py-3">Mes</th>
-                                                <th className="px-4 py-3 text-right">Cuota Total</th>
-                                                
-                                                {/* COLUMNAS NUEVAS PARA DETALLE BANCARIO */}
-                                                <th className="px-4 py-3 text-right text-slate-400 hidden md:table-cell">Int. Full</th>
-                                                {inputs.hasFrech && <th className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50">FRECH</th>}
+                                                <th className="px-4 py-3 sticky left-0 bg-slate-50 z-10">Mes</th>
+                                                <th className="px-4 py-3 text-right">Cuota (Bolsillo)</th>
                                                 <th className="px-4 py-3 text-right text-rose-500 font-bold">Int. Neto</th>
+                                                <th className="px-4 py-3 text-right text-slate-400 text-xs hidden sm:table-cell">Seguros</th>
                                                 
-                                                <th className="px-4 py-3 text-right text-indigo-700">Abono Cap.</th>
+                                                {/* NUEVAS COLUMNAS DESGLOSADAS DE CAPITAL */}
+                                                <th className="px-4 py-3 text-right bg-blue-50/50 text-blue-700 border-l border-blue-100">Capital Base</th>
+                                                <th className="px-4 py-3 text-right bg-emerald-50/50 text-emerald-600 font-bold">Abono Extra</th>
+                                                <th className="px-4 py-3 text-right bg-indigo-50/50 text-indigo-700 font-black border-r border-indigo-100">Total Capital</th>
+                                                
                                                 <th className="px-4 py-3 text-right">Saldo</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {results.schedule.slice(0, 100).map((row) => (
-                                                <tr key={row.month} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-slate-900">{row.month}</td>
+                                            {results.schedule.slice(0, 150).map((row) => (
+                                                <tr key={row.month} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="px-4 py-3 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 transition-colors">{row.month}</td>
                                                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(row.paymentTotal)}</td>
-                                                    
-                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs hidden md:table-cell">{formatCurrency(row.interestFull)}</td>
-                                                    {inputs.hasFrech && <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/50">-{formatCurrency(row.frechBenefit)}</td>}
                                                     <td className="px-4 py-3 text-right text-rose-500 font-bold">{formatCurrency(row.interestNet)}</td>
+                                                    <td className="px-4 py-3 text-right text-slate-400 text-xs hidden sm:table-cell">{formatCurrency(row.insurance)}</td>
                                                     
-                                                    <td className="px-4 py-3 text-right text-indigo-700 font-bold">{formatCurrency(row.capitalTotal)}</td>
+                                                    {/* DATOS DESGLOSADOS */}
+                                                    <td className="px-4 py-3 text-right text-blue-700 bg-blue-50/30 border-l border-blue-50">{formatCurrency(row.capitalOrdinary)}</td>
+                                                    <td className="px-4 py-3 text-right text-emerald-600 font-bold bg-emerald-50/30">{row.extraApplied > 0 ? "+" + formatCurrency(row.extraApplied) : "-"}</td>
+                                                    <td className="px-4 py-3 text-right text-indigo-700 font-black bg-indigo-50/30 border-r border-indigo-50">{formatCurrency(row.capitalTotal)}</td>
+                                                    
                                                     <td className="px-4 py-3 text-right font-bold text-slate-700">{formatCurrency(row.balance)}</td>
                                                 </tr>
                                             ))}
+                                            {results.schedule.length > 150 && (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center py-4 text-slate-400 text-xs italic">
+                                                        ... Mostrando primeros 150 meses. Descarga el Excel para ver todo ...
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1083,7 +1276,7 @@
                     case 'settings':
                         return (
                             <div className="pb-24 animate-in slide-in-from-bottom-4">
-                                <h2 className="text-xl font-bold text-slate-800 mb-6 px-1">Configuración</h2>
+                                <h2 className="text-xl font-bold text-slate-800 mb-6 px-1">Configuración Avanzada</h2>
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                     <CreditParametersForm inputs={inputs} handleInputChange={handleInputChange} setInputs={setInputs} />
                                 </div>
@@ -1108,7 +1301,7 @@
                         <div className="p-6 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200/50"><TrendingDown size={24} className="text-white" /></div>
-                                <div><h1 className="font-bold text-xl leading-none text-slate-900 tracking-tight">CrediMaster</h1><span className="text-[10px] text-blue-600 font-bold tracking-[0.2em] uppercase">Pro</span></div>
+                                <div><h1 className="font-bold text-xl leading-none text-slate-900 tracking-tight">CrediMaster</h1><span className="text-[10px] text-blue-600 font-bold tracking-[0.2em] uppercase">Pro v3</span></div>
                             </div>
                         </div>
                         <div className="p-6 space-y-8 flex-1">
