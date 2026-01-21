@@ -44,19 +44,9 @@ CrediMaster Pro es una aplicación web completa diseñada para ayudar a usuarios
 ```
 credimaster-pro/
 │
-├── index.html              # Estructura HTML principal
-├── styles/
-│   └── main.css           # Estilos personalizados y diseño
-├── scripts/
-│   ├── app.js             # Componente principal de React
-│   ├── calculator.js      # Motor de cálculo financiero
-│   ├── components/
-│   │   ├── Dashboard.js   # Vista principal con métricas
-│   │   ├── Budget.js      # Análisis de flujo de caja
-│   │   ├── Legal.js       # Generador de documentos
-│   │   ├── Forms.js       # Formularios de entrada
-│   │   └── UI.js          # Componentes reutilizables
-│   └── utils.js           # Funciones auxiliares
+├── index.html             # Estructura HTML principal
+├── styles.css             # Estilos personalizados y diseño
+├── scripts.js             # Componente principal de React
 ├── README.md              # Este archivo
 
 ```
