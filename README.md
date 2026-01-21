@@ -57,10 +57,8 @@ credimaster-pro/
 │   │   ├── Forms.js       # Formularios de entrada
 │   │   └── UI.js          # Componentes reutilizables
 │   └── utils.js           # Funciones auxiliares
-├── docs/
-│   └── README.md          # Este archivo
-└── assets/
-    └── fonts/             # Fuentes personalizadas
+├── README.md              # Este archivo
+
 ```
 
 ---
