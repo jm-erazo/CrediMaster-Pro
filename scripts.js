@@ -1,6 +1,6 @@
 // ============================================================================
 // CREDIMASTER PRO V3.3
-// Imports, Sistema de Notificaciones y Utilidades Base
+// Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
