@@ -1,11 +1,12 @@
 // ============================================================================
-// CREDIMASTER PRO V4.0 
+// CREDIMASTER PRO V4.0 - PARTE 1/7
+// Imports, Sistema de Notificaciones y Context
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 
-// Lucide Icons
+// Lucide Icons - Importaciones completas
 import { 
     PieChart, DollarSign, Calendar, AlertTriangle, ArrowRight, 
     Menu, X, BrainCircuit, Wallet, Target, BarChart3, ShieldCheck, 
@@ -16,7 +17,7 @@ import {
     Download, Layers, Percent, AlertCircle, Briefcase, Stamp, Scale, SlidersHorizontal, Check
 } from 'lucide-react';
 
-// Recharts
+// Recharts - Componentes de gráficos
 import { 
     XAxis, YAxis, CartesianGrid, Tooltip, 
     ResponsiveContainer, AreaChart, Area, Cell, Pie, PieChart as RechartsPieChart, 
@@ -24,7 +25,7 @@ import {
 } from 'recharts';
 
 // ============================================================================
-// PARTE 1: SISTEMA DE NOTIFICACIONES (TOAST)
+// SISTEMA DE NOTIFICACIONES (TOAST)
 // ============================================================================
 
 const ToastContext = React.createContext();
@@ -60,7 +61,7 @@ export const ToastProvider = ({ children }) => {
                         ) : (
                             <Info size={18} className="text-blue-400" />
                         )}
-                        {toast.message}
+                        {message}
                     </div>
                 ))}
             </div>
@@ -76,8 +77,43 @@ export const useToast = () => {
     return context;
 };
 
+// ============================================================================
+// EXPORTACIONES GLOBALES
+// ============================================================================
+
+export {
+    React, useState, useEffect, useMemo, useRef, useCallback,
+    createRoot,
+    // Icons
+    PieChart, DollarSign, Calendar, AlertTriangle, ArrowRight, 
+    Menu, X, BrainCircuit, Wallet, Target, BarChart3, ShieldCheck, 
+    List, ChevronRight, Info, Printer, Sparkles, Bot, Settings, 
+    FileText, TrendingDown, TrendingUp, Share2, Copy, Calculator, PiggyBank,
+    Coffee, Home, Car, ShoppingBag, Zap, ExternalLink, User, Building2, CreditCard,
+    RotateCcw, CheckCircle2, Code2, Coins, TrendingUpIcon, FileSearch, Receipt,
+    Download, Layers, Percent, AlertCircle, Briefcase, Stamp, Scale, SlidersHorizontal, Check,
+    // Recharts
+    XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, AreaChart, Area, Cell, Pie, RechartsPieChart, 
+    LineChart, Line, Legend
+};
+
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 2/7
+// Utilidades de Formato y Componentes Base Reutilizables
+// ============================================================================
+
+import { React, useState, useEffect } from './imports-and-context.js';
+
+// ============================================================================
+// UTILIDADES DE FORMATO
+// ============================================================================
+
 /**
  * Formatea un número como moneda colombiana (COP)
+ * @param {number} value - Valor a formatear
+ * @param {number} decimals - Número de decimales (default: 0)
+ * @returns {string} Valor formateado como COP
  */
 export const formatCurrency = (value, decimals = 0) => {
     if (value === null || value === undefined || isNaN(value)) return '$0';
@@ -92,6 +128,9 @@ export const formatCurrency = (value, decimals = 0) => {
 
 /**
  * Formatea un número con separadores de miles
+ * @param {number} value - Valor a formatear
+ * @param {number} decimals - Número de decimales (default: 2)
+ * @returns {string} Valor formateado
  */
 export const formatNumber = (value, decimals = 2) => {
     if (value === null || value === undefined || isNaN(value)) return '0';
@@ -104,6 +143,9 @@ export const formatNumber = (value, decimals = 2) => {
 
 /**
  * Formatea un porcentaje
+ * @param {number} value - Valor a formatear (ej: 13.5 para 13.5%)
+ * @param {number} decimals - Número de decimales (default: 2)
+ * @returns {string} Valor formateado con símbolo %
  */
 export const formatPercent = (value, decimals = 2) => {
     if (value === null || value === undefined || isNaN(value)) return '0%';
@@ -112,6 +154,9 @@ export const formatPercent = (value, decimals = 2) => {
 
 /**
  * Hook para debouncing de valores
+ * @param {any} value - Valor a debounce
+ * @param {number} delay - Delay en milisegundos
+ * @returns {any} Valor con debounce aplicado
  */
 export function useDebounce(value, delay) {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -131,6 +176,8 @@ export function useDebounce(value, delay) {
 
 /**
  * Convierte un string formateado a número
+ * @param {string} str - String con formato (ej: "1.500.000,50")
+ * @returns {number} Número parseado
  */
 export const parseFormattedNumber = (str) => {
     if (typeof str === 'number') return str;
@@ -143,7 +190,10 @@ export const parseFormattedNumber = (str) => {
     return isNaN(parsed) ? 0 : parsed;
 };
 
+// ============================================================================
 // COMPONENTE: NUMERIC INPUT
+// ============================================================================
+
 export const NumericInput = ({ 
     label, 
     value, 
@@ -163,8 +213,9 @@ export const NumericInput = ({
     const [inputValue, setInputValue] = useState('');
     const [isFocused, setIsFocused] = useState(false);
 
+    // Actualizar el valor mostrado cuando cambia el valor externo
     useEffect(() => {
-        if (isFocused) return;
+        if (isFocused) return; // No actualizar mientras el usuario está editando
         
         if (value === '' || value === null || value === undefined) {
             setInputValue('');
@@ -180,6 +231,7 @@ export const NumericInput = ({
     const handleFocus = () => {
         setIsFocused(true);
         if (!readOnly && value !== 0 && value) {
+            // Mostrar el número puro al editar
             setInputValue(value.toString().replace('.', ','));
         } else if (!readOnly) {
             setInputValue('');
@@ -201,10 +253,13 @@ export const NumericInput = ({
         if (readOnly) return;
         
         let raw = e.target.value;
+        
+        // Permitir solo números, puntos y comas
         if (!/^[0-9.,]*$/.test(raw)) return;
         
         setInputValue(raw);
         
+        // Convertir a número
         let numStr = raw.replace(/\./g, '').replace(',', '.');
         
         if (numStr === '' || numStr === '.') {
@@ -215,9 +270,11 @@ export const NumericInput = ({
         const parsed = parseFloat(numStr);
         
         if (!isNaN(parsed)) {
+            // Aplicar límites si existen
             let finalValue = parsed;
             if (min !== null && finalValue < min) finalValue = min;
             if (max !== null && finalValue > max) finalValue = max;
+            
             onChange(finalValue);
         }
     };
@@ -289,7 +346,10 @@ export const NumericInput = ({
     );
 };
 
+// ============================================================================
 // COMPONENTE: TOGGLE SWITCH
+// ============================================================================
+
 export const ToggleSwitch = ({ 
     label, 
     checked, 
@@ -316,7 +376,10 @@ export const ToggleSwitch = ({
     </div>
 );
 
+// ============================================================================
 // COMPONENTE: CREDIT CARD ICON
+// ============================================================================
+
 export const CreditCardIcon = ({ size = 24, className = '' }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -334,6 +397,21 @@ export const CreditCardIcon = ({ size = 24, className = '' }) => (
         <line x1="2" x2="22" y1="10" y2="10"/>
     </svg>
 );
+
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 3/7
+// Componente de Formulario de Parámetros del Crédito
+// ============================================================================
+
+import { React } from './imports-and-context.js';
+import { 
+    Settings, FileSearch, CheckCircle2, SlidersHorizontal 
+} from './imports-and-context.js';
+import { NumericInput, ToggleSwitch } from './utilities-and-components.js';
+
+// ============================================================================
+// FORMULARIO DE PARÁMETROS DEL CRÉDITO
+// ============================================================================
 
 export const CreditParametersForm = ({ inputs, handleInputChange, setInputs, className = "" }) => {
     
@@ -664,9 +742,18 @@ export const CreditParametersForm = ({ inputs, handleInputChange, setInputs, cla
     );
 };
 
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 4/7
+// Motor de Cálculo Financiero Avanzado
+// Precisión de nivel Excel/Google Sheets
+// ============================================================================
+
 /**
  * Motor de cálculo financiero para créditos hipotecarios
  * Soporta: Pesos, UVR, FRECH, seguros indexados, y abonos extraordinarios
+ * 
+ * @param {Object} params - Parámetros del crédito
+ * @returns {Object|null} - Resultados con métricas, gráficos y tabla de amortización
  */
 export const calculateEngine = (params) => {
     const { 
@@ -817,7 +904,11 @@ export const calculateEngine = (params) => {
     const frechLimitMonth = (frechRemainingMonths > 0) 
         ? frechRemainingMonths 
         : 84; // Default 7 años
-   
+    
+    // ========================================================================
+    // 5. SIMULACIÓN DE ESTRATEGIA
+    // ========================================================================
+    
     const schedule = [];              // Tabla de amortización
     let totalInterestPaidPesos = 0;   // Total intereses pagados
     let totalFrechBenefitPesos = 0;   // Total beneficio FRECH
@@ -1024,6 +1115,10 @@ export const calculateEngine = (params) => {
         });
     }
     
+    // ========================================================================
+    // 6. CÁLCULO DE MÉTRICAS FINALES
+    // ========================================================================
+    
     const totalInsurancePaid = schedule.reduce((sum, row) => sum + row.insurance, 0);
     const totalCapitalPaid = schedule.reduce((sum, row) => sum + row.capitalTotal, 0);
     
@@ -1073,6 +1168,27 @@ export const calculateEngine = (params) => {
         schedule
     };
 };
+
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 5/7
+// Vistas: Dashboard y Presupuesto
+// ============================================================================
+
+import { React, useState } from './imports-and-context.js';
+import { 
+    Wallet, Calendar, DollarSign, Target, BarChart3, TrendingDown,
+    TrendingUp, Calculator, Coffee, Home, Car, ShoppingBag, Zap,
+    ArrowRight, Sparkles
+} from './imports-and-context.js';
+import { 
+    ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    Tooltip, RechartsPieChart, Pie, Cell
+} from './imports-and-context.js';
+import { formatCurrency, NumericInput } from './utilities-and-components.js';
+
+// ============================================================================
+// VISTA: DASHBOARD
+// ============================================================================
 
 export const DashboardView = ({ metrics, graphData }) => {
     
@@ -1338,6 +1454,10 @@ export const DashboardView = ({ metrics, graphData }) => {
     );
 };
 
+// ============================================================================
+// VISTA: PRESUPUESTO (ESTUDIO FINANCIERO)
+// ============================================================================
+
 export const BudgetView = ({ onApplyExtra }) => {
     const [finances, setFinances] = useState({
         income: 5000000,
@@ -1479,6 +1599,22 @@ export const BudgetView = ({ onApplyExtra }) => {
         </div>
     );
 };
+
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 6/7
+// Vistas: Generador Legal y Tabla Detallada
+// ============================================================================
+
+import { React, useState, useRef } from './imports-and-context.js';
+import { 
+    ShieldCheck, FileSearch, Target, Wallet, Copy, FileText, Printer, Download 
+} from './imports-and-context.js';
+import { useToast } from './imports-and-context.js';
+import { formatCurrency } from './utilities-and-components.js';
+
+// ============================================================================
+// VISTA: GENERADOR DE DOCUMENTOS LEGALES
+// ============================================================================
 
 export const LegalGenerator = ({ inputs }) => {
     const [type, setType] = useState("plazo");
@@ -1751,6 +1887,10 @@ export const LegalGenerator = ({ inputs }) => {
     );
 };
 
+// ============================================================================
+// VISTA: TABLA DETALLADA DE AMORTIZACIÓN
+// ============================================================================
+
 export const ScheduleView = ({ results, inputs }) => {
     const { addToast } = useToast();
 
@@ -1873,7 +2013,27 @@ export const ScheduleView = ({ results, inputs }) => {
     );
 };
 
+// ============================================================================
+// CREDIMASTER PRO V4.0 - PARTE 7/7
+// Componente Principal, Vista IA Advisor y Render Final
+// ============================================================================
+
+import { React, useState, useEffect, useMemo, createRoot } from './imports-and-context.js';
+import { 
+    PieChart, Calculator, List, BrainCircuit, FileText, Settings,
+    TrendingDown, ChevronRight, Code2, Sparkles, Target
+} from './imports-and-context.js';
+import { ToastProvider } from './imports-and-context.js';
+import { useDebounce } from './utilities-and-components.js';
+import { CreditParametersForm } from './form-components.js';
+import { calculateEngine } from './calculation-engine.js';
+import { DashboardView, BudgetView } from './dashboard-views.js';
+import { LegalGenerator, ScheduleView } from './legal-table-views.js';
+
+// ============================================================================
 // VISTA: IA ADVISOR (ANÁLISIS INTELIGENTE)
+// ============================================================================
+
 const AdvisorView = ({ metrics, inputs }) => {
     const [aiReport, setAiReport] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -2013,7 +2173,9 @@ const AdvisorView = ({ metrics, inputs }) => {
     );
 };
 
+// ============================================================================
 // COMPONENTE PRINCIPAL: APP
+// ============================================================================
 
 const App = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -2237,7 +2399,9 @@ const App = () => {
     );
 };
 
+// ============================================================================
 // HELPERS
+// ============================================================================
 
 function getDefaultInputs() {
     return {
@@ -2264,4 +2428,9 @@ function getDefaultInputs() {
     };
 }
 
-export default App;
+// ============================================================================
+// RENDER FINAL
+// ============================================================================
+
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
