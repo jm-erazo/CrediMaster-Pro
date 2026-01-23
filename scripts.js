@@ -1166,7 +1166,7 @@ const DashboardView = ({ metrics, graphData }) => {
                     <div className="mt-auto pt-4 text-xs text-indigo-50 leading-relaxed font-medium border-t border-white/10">
                         {metrics.isUVR 
                             ? "En UVR, abonar capital es vital. Tu abono amortigua la inflación y evita que la deuda crezca exponencialmente."
-                            : `Estás ahorrando ${formatCurrency(metrics.interestSaved)}. Eso equivale a ${(metrics.interestSaved / 1300000).toFixed(1)} salarios mínimos actuales.`
+                            : `Estás ahorrando ${formatCurrency(metrics.interestSaved)}. Eso equivale a ${(metrics.interestSaved / 1750905).toFixed(1)} salarios mínimos actuales.`
                         }
                     </div>
                 </div>
