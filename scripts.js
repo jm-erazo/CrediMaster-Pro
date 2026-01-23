@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3
+// CREDIMASTER PRO V3.4 (Optimized Core)
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -514,20 +514,16 @@ const calculateEngine = (params) => {
     
     if (calibrationCapital > 0 && calibrationInterest > 0) {
         const totalBasePesos = calibrationCapital + calibrationInterest;
-        
         if (isUVR) {
             pmtFixedUnit = totalBasePesos / uvrValue;
         } else {
             pmtFixedUnit = totalBasePesos;
         }
-        
         pmtTotalObligatoryDisplay = totalBasePesos + insurance;
         isManualQuota = true;
-
     } else if (currentQuota && currentQuota > insurance) {
         isManualQuota = true;
         const quotaWithoutInsurance = currentQuota - insurance;
-        
         if (isUVR) {
             pmtFixedUnit = quotaWithoutInsurance / uvrValue;
         } else {
@@ -536,6 +532,7 @@ const calculateEngine = (params) => {
         pmtTotalObligatoryDisplay = currentQuota;
     } else {
         if (!months) return null;
+        // Fórmula de Anualidad Vencida para hallar cuota
         pmtFixedUnit = balanceBaseUVR * (rateMonthlyFull * Math.pow(1 + rateMonthlyFull, months)) / (Math.pow(1 + rateMonthlyFull, months) - 1);
         
         const firstMonthPaymentPesos = isUVR 
@@ -558,17 +555,27 @@ const calculateEngine = (params) => {
     }
     const frechLimitMonth = frechRemainingMonths > 0 ? frechRemainingMonths : 84;
 
-    // --- SIMULACIÓN ESTRATEGIA ---
+    // --- SIMULACIÓN ESTRATEGIA VS BANCO (MOTOR HÍBRIDO) ---
     let schedule = [];
     let totalInterestPaidPesos = 0; 
     let totalFrechBenefitPesos = 0; 
     let currentMonth = 0;
-    const SAFE_LIMIT = 600; 
+    const SAFE_LIMIT = 600; // 50 años máximo para evitar bucles infinitos
+    const EPSILON = isUVR ? 0.0001 : 10; // Tolerancia para considerar deuda pagada
 
     let tempBalanceUnit = balanceStrategyUnit;
     let tempUVR = currentUVR;
     let currentInsurance = insurance;
     let currentExtraMonthly = extraMonthly; 
+    let activeStrategy = true; // Flag para saber si la estrategia sigue pagando
+
+    // Variables sombra para el escenario "Banco Original"
+    let balanceBancoUnit = balanceBaseUVR;
+    let uvrBanco = currentUVR;
+    let insuranceBanco = insurance;
+    let totalInterestBancoPesos = 0; 
+    let totalInsuranceBanco = 0;
+    let activeBanco = true;
 
     const graphData = [];
     graphData.push({
@@ -577,71 +584,107 @@ const calculateEngine = (params) => {
         deudaEstrategia: Math.round(isUVR ? balanceStrategyUnit * uvrValue : loanAmount),
     });
 
-    let balanceBancoUnit = balanceBaseUVR;
-    let uvrBanco = currentUVR;
-    let insuranceBanco = insurance;
-    const scheduleBanco = [];
-    let totalInterestBancoPesos = 0; 
-    let totalInsuranceBanco = 0;
-
-    while (tempBalanceUnit > (isUVR ? 0.01 : 100) && currentMonth < SAFE_LIMIT) {
+    // Bucle Híbrido: Corre mientras ALGUNO de los dos tenga deuda
+    while ((activeStrategy || activeBanco) && currentMonth < SAFE_LIMIT) {
         currentMonth++;
         
+        // Actualizar inflación/UVR global para este mes
         if (isUVR) {
             tempUVR = tempUVR * (1 + inflationMonthly);
             uvrBanco = uvrBanco * (1 + inflationMonthly);
         }
 
+        // Actualizar seguros por inflación
         if (insuranceIndexed) {
+            // Solo actualizamos el valor base, se aplicará si la deuda existe
             currentInsurance = currentInsurance * (1 + inflationMonthly);
             insuranceBanco = insuranceBanco * (1 + inflationMonthly);
         }
 
+        // Aumento anual del abono extra (Bola de Nieve)
         if (currentMonth > 1 && currentMonth % 12 === 1 && annualIncrease > 0) {
             currentExtraMonthly = currentExtraMonthly * (1 + (annualIncrease / 100));
         }
-        
-        const interestFullUnit = tempBalanceUnit * rateMonthlyFull;
-        
-        let frechSubsidyUnit = 0;
-        if (hasFrech && currentMonth <= frechLimitMonth) {
-            frechSubsidyUnit = tempBalanceUnit * frechRateReductionFactor;
-            if (frechSubsidyUnit > interestFullUnit) frechSubsidyUnit = interestFullUnit;
-        }
 
-        const interestClientUnit = interestFullUnit - frechSubsidyUnit;
-        let capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit;
-        
-        if (isManualQuota && calibrationInterest > 0) {
-             capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit; 
-        }
-        
-        if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0; 
+        // --- CÁLCULOS ESTRATEGIA (SI AÚN DEBE) ---
+        let interestClientPesos = 0;
+        let capitalOrdinaryPesos = 0;
+        let capitalTotalPesos = 0;
+        let totalPaymentPocketPesos = 0;
+        let balancePesos = 0;
+        let paymentExtraAppliedPesos = 0;
+        let frechSubsidyPesos = 0;
+        let insurancePaidThisMonth = 0;
 
-        let paymentExtraPesos = currentExtraMonthly;
-        if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) {
-            paymentExtraPesos += currentExtraMonthly; 
-        }
-        if (currentMonth === 1) paymentExtraPesos += oneTimePayment;
-
-        let paymentExtraUnit = isUVR ? (paymentExtraPesos / tempUVR) : paymentExtraPesos;
-        let capitalTotalUnit = capitalOrdinaryUnit + paymentExtraUnit;
-
-        if (capitalTotalUnit > tempBalanceUnit) {
-            capitalTotalUnit = tempBalanceUnit; 
-            if (tempBalanceUnit < capitalOrdinaryUnit) {
-                 capitalOrdinaryUnit = tempBalanceUnit;
-                 paymentExtraUnit = 0;
-            } else {
-                 paymentExtraUnit = tempBalanceUnit - capitalOrdinaryUnit;
+        if (tempBalanceUnit > EPSILON) {
+            const interestFullUnit = tempBalanceUnit * rateMonthlyFull;
+            
+            let frechSubsidyUnit = 0;
+            if (hasFrech && currentMonth <= frechLimitMonth) {
+                frechSubsidyUnit = tempBalanceUnit * frechRateReductionFactor;
+                if (frechSubsidyUnit > interestFullUnit) frechSubsidyUnit = interestFullUnit;
             }
+
+            const interestClientUnit = interestFullUnit - frechSubsidyUnit;
+            
+            // Capital Ordinario (Cuota fija - Interés)
+            let capitalOrdinaryUnit = pmtFixedUnit - interestFullUnit;
+            
+            // Corrección: Si es cuota manual calibrada y es la primera iteración, ajustamos para mantener consistencia
+            // (Lógica simplificada para mantener flujo constante)
+            
+            if (capitalOrdinaryUnit < 0) capitalOrdinaryUnit = 0; 
+
+            // Abonos Extras
+            let paymentExtraPesos = currentExtraMonthly;
+            if (usePrimas && (currentMonth % 12 === 6 || currentMonth % 12 === 0)) {
+                paymentExtraPesos += currentExtraMonthly; 
+            }
+            if (currentMonth === 1) paymentExtraPesos += oneTimePayment;
+
+            let paymentExtraUnit = isUVR ? (paymentExtraPesos / tempUVR) : paymentExtraPesos;
+            let capitalTotalUnit = capitalOrdinaryUnit + paymentExtraUnit;
+
+            // Ajuste final si pagamos más de lo que debemos
+            if (capitalTotalUnit > tempBalanceUnit) {
+                capitalTotalUnit = tempBalanceUnit; 
+                // Recalcular componentes si es el último pago
+                if (tempBalanceUnit < capitalOrdinaryUnit) {
+                     capitalOrdinaryUnit = tempBalanceUnit;
+                     paymentExtraUnit = 0;
+                } else {
+                     paymentExtraUnit = tempBalanceUnit - capitalOrdinaryUnit;
+                }
+            }
+
+            tempBalanceUnit -= capitalTotalUnit;
+            if(tempBalanceUnit <= EPSILON) {
+                tempBalanceUnit = 0;
+                activeStrategy = false; // Estrategia terminada
+            }
+
+            // Conversiones a Pesos para Reporte
+            const interestFullPesos = isUVR ? interestFullUnit * tempUVR : interestFullUnit;
+            frechSubsidyPesos = isUVR ? frechSubsidyUnit * tempUVR : frechSubsidyUnit;
+            interestClientPesos = isUVR ? interestClientUnit * tempUVR : interestClientUnit;
+            
+            capitalOrdinaryPesos = isUVR ? capitalOrdinaryUnit * tempUVR : capitalOrdinaryUnit;
+            capitalTotalPesos = isUVR ? capitalTotalUnit * tempUVR : capitalTotalUnit;
+            paymentExtraAppliedPesos = isUVR ? paymentExtraUnit * tempUVR : paymentExtraUnit;
+            balancePesos = isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit;
+            insurancePaidThisMonth = currentInsurance;
+            
+            totalPaymentPocketPesos = interestClientPesos + capitalOrdinaryPesos + insurancePaidThisMonth + paymentExtraAppliedPesos;
+
+            totalInterestPaidPesos += interestClientPesos;
+            totalFrechBenefitPesos += frechSubsidyPesos;
+        } else {
+            activeStrategy = false;
         }
 
-        tempBalanceUnit -= capitalTotalUnit;
-        if(tempBalanceUnit < (isUVR ? 0.0001 : 1)) tempBalanceUnit = 0;
-        
-        // Simulación Banco
-        if (balanceBancoUnit > (isUVR ? 0.01 : 100)) {
+        // --- CÁLCULOS BANCO ORIGINAL (SI AÚN DEBERÍA DEBER) ---
+        // Este bloque corre independiente para calcular el "Costo de Oportunidad" real
+        if (balanceBancoUnit > EPSILON) {
             const intBancoFullUnit = balanceBancoUnit * rateMonthlyFull;
             let frechBancoUnit = 0;
             if (hasFrech && currentMonth <= frechLimitMonth) {
@@ -655,53 +698,51 @@ const calculateEngine = (params) => {
             if (capBancoUnit > balanceBancoUnit) capBancoUnit = balanceBancoUnit;
             
             balanceBancoUnit -= capBancoUnit;
-            if(balanceBancoUnit < (isUVR ? 0.0001 : 1)) balanceBancoUnit = 0;
+            if(balanceBancoUnit <= EPSILON) {
+                balanceBancoUnit = 0;
+                activeBanco = false;
+            }
 
+            // Acumuladores del escenario Banco (Lo que te ahorras)
             totalInterestBancoPesos += (isUVR ? intBancoNetUnit * uvrBanco : intBancoNetUnit);
             totalInsuranceBanco += insuranceBanco;
+        } else {
+            activeBanco = false;
         }
-        scheduleBanco.push(isUVR ? balanceBancoUnit * uvrBanco : balanceBancoUnit);
 
-        const interestFullPesos = isUVR ? interestFullUnit * tempUVR : interestFullUnit;
-        const frechSubsidyPesos = isUVR ? frechSubsidyUnit * tempUVR : frechSubsidyUnit;
-        const interestClientPesos = isUVR ? interestClientUnit * tempUVR : interestClientUnit;
-        
-        const capitalOrdinaryPesos = isUVR ? capitalOrdinaryUnit * tempUVR : capitalOrdinaryUnit;
-        const capitalTotalPesos = isUVR ? capitalTotalUnit * tempUVR : capitalTotalUnit;
-        const paymentExtraAppliedPesos = isUVR ? paymentExtraUnit * tempUVR : paymentExtraUnit;
-        const balancePesos = isUVR ? tempBalanceUnit * tempUVR : tempBalanceUnit;
-        
-        const totalPaymentPocketPesos = interestClientPesos + capitalOrdinaryPesos + currentInsurance + paymentExtraAppliedPesos;
+        // Solo agregamos al schedule si la estrategia está activa (para la tabla)
+        // Opcional: Podríamos agregar filas vacías si queremos mostrar la comparación mes a mes en tabla,
+        // pero para la tabla de usuario es mejor mostrar solo sus pagos.
+        if (activeStrategy || totalPaymentPocketPesos > 0) {
+            schedule.push({
+                month: currentMonth,
+                paymentTotal: totalPaymentPocketPesos,
+                capitalOrdinary: capitalOrdinaryPesos,
+                capitalTotal: capitalTotalPesos,
+                interestFull: isUVR ? (interestClientPesos + frechSubsidyPesos) : (interestClientPesos + frechSubsidyPesos), // Aproximación visual
+                frechBenefit: frechSubsidyPesos,
+                interestNet: interestClientPesos,
+                insurance: insurancePaidThisMonth,
+                balance: balancePesos,
+                extraApplied: paymentExtraAppliedPesos,
+                uvrUnitValue: isUVR ? tempUVR : null
+            });
+        }
 
-        totalInterestPaidPesos += interestClientPesos;
-        totalFrechBenefitPesos += frechSubsidyPesos;
-
-        schedule.push({
-            month: currentMonth,
-            paymentTotal: totalPaymentPocketPesos,
-            capitalOrdinary: capitalOrdinaryPesos,
-            capitalTotal: capitalTotalPesos,
-            interestFull: interestFullPesos,
-            frechBenefit: frechSubsidyPesos,
-            interestNet: interestClientPesos,
-            insurance: currentInsurance,
-            balance: balancePesos > 1 ? balancePesos : 0,
-            extraApplied: paymentExtraAppliedPesos,
-            uvrUnitValue: isUVR ? tempUVR : null
-        });
-
-        if (currentMonth % 3 === 0 || tempBalanceUnit <= 0 || currentMonth === 1) {
+        // Datos para la gráfica (Siempre agregamos para que la curva del banco siga bajando)
+        if (currentMonth % 3 === 0 || currentMonth === 1 || !activeStrategy || !activeBanco) {
             graphData.push({
                 mes: currentMonth,
-                deudaBanco: Math.round(scheduleBanco[currentMonth-1] || 0),
-                deudaEstrategia: Math.round(balancePesos > 0 ? balancePesos : 0),
+                deudaBanco: Math.round(isUVR ? balanceBancoUnit * uvrBanco : balanceBancoUnit),
+                deudaEstrategia: Math.round(balancePesos),
             });
         }
     }
 
-    if (currentMonth < months) {
+    // Asegurar punto final en gráfica
+    if (graphData[graphData.length-1].deudaBanco > 0 || graphData[graphData.length-1].deudaEstrategia > 0) {
         graphData.push({
-            mes: months,
+            mes: currentMonth,
             deudaBanco: 0,
             deudaEstrategia: 0
         });
@@ -710,6 +751,7 @@ const calculateEngine = (params) => {
     const totalInsurancePaid = schedule.reduce((sum, row) => sum + row.insurance, 0);
     const totalCapitalPaid = schedule.reduce((sum, row) => sum + row.capitalTotal, 0);
     
+    // CORRECCIÓN CRÍTICA: Total Payment Original ahora usa los acumuladores completos del bucle extendido
     const totalPaymentOriginalPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestBancoPesos + totalInsuranceBanco;
     const totalPaymentNewPesos = (isUVR ? balanceBaseUVR * uvrValue : loanAmount) + totalInterestPaidPesos + totalInsurancePaid; 
 
@@ -720,6 +762,7 @@ const calculateEngine = (params) => {
             originalTerm: months,
             newTerm: schedule.length,
             monthsSaved: Math.max(0, months - schedule.length),
+            // CORRECCIÓN CRÍTICA: El ahorro es la diferencia entre el escenario Banco COMPLETO y tu escenario
             interestSaved: Math.max(0, totalInterestBancoPesos - totalInterestPaidPesos),
             totalPaymentOriginal: totalPaymentOriginalPesos,
             totalPaymentNew: totalPaymentNewPesos,
