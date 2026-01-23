@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.4 (Optimized Core)
+// CREDIMASTER PRO V3.3 (Optimized Core)
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
