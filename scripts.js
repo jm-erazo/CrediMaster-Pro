@@ -1114,7 +1114,7 @@ const LegalGenerator = ({ inputs }) => {
                         box-shadow: none !important;
                         margin: 0 !important;
                         /* Mantener el padding interno de 2.5cm que es el margen de la hoja */
-                        padding: 4cm !important;
+                        padding: 3cm !important;
                         min-height: 100vh !important;
                     }
 
