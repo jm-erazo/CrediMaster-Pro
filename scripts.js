@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3 (Optimized Core + Legal Fixes + Clean Print V2)
+// CREDIMASTER PRO V3.3
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -1114,7 +1114,7 @@ const LegalGenerator = ({ inputs }) => {
                         box-shadow: none !important;
                         margin: 0 !important;
                         /* Mantener el padding interno de 2.5cm que es el margen de la hoja */
-                        padding: 2.5cm !important;
+                        padding: 4cm !important;
                         min-height: 100vh !important;
                     }
 
