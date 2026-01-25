@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3 (Optimized Core + Legal Fixes)
+// CREDIMASTER PRO V3.3 
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -1076,29 +1076,39 @@ const LegalGenerator = ({ inputs }) => {
             <style>
                 {`
                 @media print {
+                    /* Ocultar todo el cuerpo por defecto */
                     body * {
                         visibility: hidden;
                     }
+                    
+                    /* Resetear la página para quitar encabezados/pies de página del navegador */
+                    @page {
+                        margin: 0;
+                        size: auto;
+                    }
+
+                    /* Hacer visible solo el área de impresión */
                     #printable-area, #printable-area * {
                         visibility: visible;
                     }
+
+                    /* Posicionar el área de impresión sobre todo lo demás */
                     #printable-area {
                         position: absolute;
                         left: 0;
                         top: 0;
                         width: 100%;
-                        margin: 0;
-                        padding: 0;
+                        /* Importante: Padding simula los márgenes de la hoja ya que quitamos los del navegador */
+                        padding: 2.5cm !important; 
+                        margin: 0 !important;
                         background-color: white !important;
                         color: black !important;
                         box-shadow: none !important;
+                        z-index: 9999;
                     }
+
                     .no-print {
                         display: none !important;
-                    }
-                    /* Eliminar márgenes del navegador */
-                    @page {
-                        margin: 1.5cm;
                     }
                 }
                 `}
