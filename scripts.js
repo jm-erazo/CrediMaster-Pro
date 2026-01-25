@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3 (Optimized Core)
+// CREDIMASTER PRO V3.3 (Optimized Core + Legal Fixes)
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -908,17 +908,28 @@ const BudgetView = ({ onApplyExtra }) => {
     );
 };
 
-// --- VISTA: GENERADOR LEGAL ---
+// --- VISTA: GENERADOR LEGAL (CORREGIDO) ---
 const LegalGenerator = ({ inputs }) => {
     const [type, setType] = useState("plazo"); 
-    const [personalData, setPersonalData] = useState({
-        name: "",
-        cc: "",
-        phone: "",
-        bank: "",
-        creditNumber: "",
-        city: "Bogotá D.C."
+    
+    // PERSISTENCIA DE DATOS: Inicializamos desde localStorage
+    const [personalData, setPersonalData] = useState(() => {
+        const saved = localStorage.getItem('credimaster_legal_data');
+        return saved ? JSON.parse(saved) : {
+            name: "",
+            cc: "",
+            phone: "",
+            bank: "",
+            creditNumber: "",
+            city: "Bogotá D.C."
+        };
     });
+
+    // Guardamos cada cambio en localStorage
+    useEffect(() => {
+        localStorage.setItem('credimaster_legal_data', JSON.stringify(personalData));
+    }, [personalData]);
+
     const letterRef = useRef(null);
     const { addToast } = useToast();
 
@@ -929,20 +940,118 @@ const LegalGenerator = ({ inputs }) => {
         }
     };
 
+    // FUNCIÓN DE DESCARGA MEJORADA: Genera HTML limpio sin clases de Tailwind
     const handleDownloadWord = () => {
-        const content = letterRef.current.innerHTML;
-        
-        const preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Carta Derecho de Petición</title><style>
-            body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; }
-            p { margin-bottom: 12pt; line-height: 1.5; text-align: justify; }
-            .header { font-weight: bold; }
-            .signature { margin-top: 50pt; border-top: 1pt solid black; width: 200pt; padding-top: 5pt; }
-        </style></head><body>`;
-        const postHtml = "</body></html>";
-        
-        const html = preHtml + content + postHtml;
+        // Datos actuales
+        const date = `${personalData.city || "Ciudad"}, ${new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+        const bankName = personalData.bank || "[NOMBRE DEL BANCO]";
+        const clientName = personalData.name || "[NOMBRE DEL TITULAR]";
+        const clientCC = personalData.cc || "[CÉDULA]";
+        const clientPhone = personalData.phone || "[TELÉFONO]";
+        const creditNum = personalData.creditNumber || "[NÚMERO DE CRÉDITO]";
+        const amount = formatCurrency(inputs.extraMonthly);
 
-        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        // Selección de texto según opción
+        const optionText = type === 'plazo' 
+            ? `<strong>OPCIÓN ELEGIDA: REDUCCIÓN DE PLAZO.</strong><br/>Solicito que el abono ingrese directamente al capital de la deuda manteniendo el valor de la cuota actual constante, con el fin de <strong>disminuir el número de cuotas restantes</strong> (Reducción de Plazo).`
+            : `<strong>OPCIÓN ELEGIDA: REDUCCIÓN DEL CANON/CUOTA.</strong><br/>Solicito que el abono ingrese directamente al capital de la deuda manteniendo el plazo actual constante, con el fin de <strong>disminuir el valor mensual de la cuota futura</strong> (Reducción de Cuota).`;
+
+        // Construcción del HTML puro para Word
+        const content = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+                <meta charset='utf-8'>
+                <title>Carta Derecho de Petición</title>
+                <style>
+                    /* Estilos específicos para que Word los entienda */
+                    @page {
+                        size: 21.59cm 27.94cm;
+                        margin: 2.54cm;
+                    }
+                    body {
+                        font-family: 'Times New Roman', serif;
+                        font-size: 12pt;
+                        line-height: 1.5;
+                        color: #000000;
+                        background-color: #ffffff;
+                    }
+                    p {
+                        margin-bottom: 12pt;
+                        text-align: justify;
+                    }
+                    .header {
+                        font-weight: bold;
+                        text-transform: uppercase;
+                    }
+                    .ref {
+                        text-align: right;
+                        font-weight: bold;
+                    }
+                    .quote {
+                        margin-left: 1cm;
+                        padding: 10pt;
+                        background-color: #f0f0f0;
+                        border-left: 4pt solid #000000;
+                        font-style: italic;
+                    }
+                    .signature {
+                        margin-top: 60pt;
+                        border-top: 1pt solid #000000;
+                        width: 200pt;
+                        padding-top: 5pt;
+                    }
+                </style>
+            </head>
+            <body>
+                <p>${date}</p>
+                <br/>
+                <p>Señores<br/>
+                <span class="header">${bankName}</span><br/>
+                Departamento de Cartera / Crédito Hipotecario<br/>
+                E. S. D.</p>
+                <br/>
+                <p class="ref">
+                    REF: DERECHO DE PETICIÓN - ABONO EXTRAORDINARIO A CAPITAL<br/>
+                    Crédito No. ${creditNum}<br/>
+                    Titular: ${clientName}
+                </p>
+                <br/>
+                <p>Respetados señores:</p>
+                <p>
+                    Yo, <strong>${clientName}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>${clientCC}</strong>, 
+                    en mi calidad de deudor del crédito de la referencia, acudo a ustedes para manifestar mi voluntad de realizar un <strong>ABONO EXTRAORDINARIO A CAPITAL</strong> 
+                    por valor de <strong>${amount}</strong> (o la suma que efectivamente consigne).
+                </p>
+                <p>
+                    De conformidad con lo establecido en la <strong>Ley 546 de 1999 (Ley de Vivienda), Artículo 17, Numeral 8</strong>, 
+                    los deudores de créditos de vivienda tenemos el derecho irrenunciable a prepagar total o parcialmente nuestras obligaciones 
+                    <strong>sin penalidad alguna</strong>.
+                </p>
+                <p>En ejercicio de este derecho, solicito expresamente que este dinero se aplique de la siguiente manera:</p>
+                
+                <div class="quote">
+                    ${optionText}
+                </div>
+                
+                <p>
+                    Aclaro que este pago <strong>NO debe ser tomado como un adelanto de cuotas futuras</strong>, sino como una amortización extraordinaria 
+                    al saldo de capital vigente al momento del pago, tal como lo ordena la Circular Básica Jurídica de la Superintendencia Financiera de Colombia.
+                </p>
+                <p>
+                    Quedo a la espera de la confirmación de la aplicación de este pago y el nuevo plan de pagos proyectado.
+                    <br/><br/>
+                    Atentamente,
+                </p>
+                <div class="signature">
+                    <p><strong>${clientName}</strong><br/>
+                    C.C. ${clientCC}<br/>
+                    Tel: ${clientPhone}</p>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
         const url = URL.createObjectURL(blob);
         
         const link = document.createElement("a");
@@ -952,7 +1061,7 @@ const LegalGenerator = ({ inputs }) => {
         link.click();
         document.body.removeChild(link);
         
-        addToast("Descargando archivo Word...");
+        addToast("Descargando archivo Word optimizado...");
     };
 
     const handlePrint = () => {
@@ -963,6 +1072,38 @@ const LegalGenerator = ({ inputs }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-24 lg:pb-0 animate-in fade-in">
+             {/* Estilos específicos para impresión: Ocultan todo menos la carta y fuerzan B/N */}
+            <style>
+                {`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #printable-area, #printable-area * {
+                        visibility: visible;
+                    }
+                    #printable-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        margin: 0;
+                        padding: 0;
+                        background-color: white !important;
+                        color: black !important;
+                        box-shadow: none !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    /* Eliminar márgenes del navegador */
+                    @page {
+                        margin: 1.5cm;
+                    }
+                }
+                `}
+            </style>
+
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 relative overflow-hidden no-print">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck size={120} className="text-amber-600"/></div>
                 <div className="relative z-10">
@@ -973,7 +1114,7 @@ const LegalGenerator = ({ inputs }) => {
 
             <div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="no-print space-y-4 mb-8 border-b border-slate-100 pb-8">
-                     <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">1. Tus Datos</h3>
+                     <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">1. Tus Datos (Se guardan automáticamente)</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" name="city" placeholder="Ciudad (Ej: Bogotá D.C.)" value={personalData.city} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                         <input type="text" name="bank" placeholder="Nombre del Banco" value={personalData.bank} onChange={handleChange} className="p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
