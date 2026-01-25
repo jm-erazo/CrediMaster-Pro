@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3 
+// CREDIMASTER PRO V3.3 (Optimized Core + Legal Fixes + Clean Print V2)
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -1084,7 +1084,7 @@ const LegalGenerator = ({ inputs }) => {
                     /* Resetear la página para quitar encabezados/pies de página del navegador */
                     @page {
                         margin: 0;
-                        size: auto;
+                        size: letter;
                     }
 
                     /* Hacer visible solo el área de impresión */
@@ -1098,13 +1098,24 @@ const LegalGenerator = ({ inputs }) => {
                         left: 0;
                         top: 0;
                         width: 100%;
-                        /* Importante: Padding simula los márgenes de la hoja ya que quitamos los del navegador */
-                        padding: 2.5cm !important; 
+                        /* Eliminar padding del contenedor padre para evitar duplicidad de márgenes */
+                        padding: 0 !important; 
                         margin: 0 !important;
                         background-color: white !important;
                         color: black !important;
                         box-shadow: none !important;
                         z-index: 9999;
+                    }
+                    
+                    /* Asegurar que la carta interna tenga el tamaño correcto y el padding correcto */
+                    .letter-paper {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        box-shadow: none !important;
+                        margin: 0 !important;
+                        /* Mantener el padding interno de 2.5cm que es el margen de la hoja */
+                        padding: 2.5cm !important;
+                        min-height: 100vh !important;
                     }
 
                     .no-print {
