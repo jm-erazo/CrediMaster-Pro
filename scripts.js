@@ -1,5 +1,5 @@
 // ============================================================================
-// CREDIMASTER PRO V3.3
+// CREDIMASTER PRO V3.3.
 // Imports, Sistema de Notificaciones y Utilidades Base 
 // ============================================================================
 
@@ -1072,7 +1072,7 @@ const LegalGenerator = ({ inputs }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6 pb-24 lg:pb-0 animate-in fade-in">
-             {/* Estilos específicos para impresión: Ocultan todo menos la carta y fuerzan B/N */}
+             {/* Estilos específicos para impresión: Ocultan todo menos la carta y permiten ajuste de margen */}
             <style>
                 {`
                 @media print {
@@ -1081,41 +1081,35 @@ const LegalGenerator = ({ inputs }) => {
                         visibility: hidden;
                     }
                     
-                    /* Resetear la página para quitar encabezados/pies de página del navegador */
+                    /* Permitir al navegador controlar márgenes y tamaño */
                     @page {
-                        margin: 0;
-                        size: letter;
+                        size: auto;
+                        margin: auto;
                     }
 
-                    /* Hacer visible solo el área de impresión */
-                    #printable-area, #printable-area * {
-                        visibility: visible;
-                    }
-
-                    /* Posicionar el área de impresión sobre todo lo demás */
+                    /* Hacer visible solo el área de impresión y posicionarlo */
                     #printable-area {
                         position: absolute;
                         left: 0;
                         top: 0;
                         width: 100%;
-                        /* Eliminar padding del contenedor padre para evitar duplicidad de márgenes */
-                        padding: 0 !important; 
-                        margin: 0 !important;
+                        visibility: visible;
                         background-color: white !important;
-                        color: black !important;
-                        box-shadow: none !important;
-                        z-index: 9999;
+                    }
+
+                    /* Hacer visible el contenido interno */
+                    #printable-area * {
+                        visibility: visible;
                     }
                     
-                    /* Asegurar que la carta interna tenga el tamaño correcto y el padding correcto */
+                    /* Ajustes de la hoja: eliminamos padding forzado para respetar los márgenes del navegador */
                     .letter-paper {
                         width: 100% !important;
-                        max-width: 100% !important;
+                        max-width: none !important;
                         box-shadow: none !important;
                         margin: 0 !important;
-                        /* Mantener el padding interno de 2.5cm que es el margen de la hoja */
-                        padding: 3cm !important;
-                        min-height: 100vh !important;
+                        padding: 0 !important; /* Eliminamos padding para que mande el margen del navegador */
+                        min-height: auto !important;
                     }
 
                     .no-print {
