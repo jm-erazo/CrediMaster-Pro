@@ -908,7 +908,7 @@ const BudgetView = ({ onApplyExtra }) => {
     );
 };
 
-// --- VISTA: GENERADOR LEGAL (CORREGIDO) ---
+// --- VISTA: GENERADOR LEGAL (CORREGIDO PARA BLINDAJE JURÍDICO) ---
 const LegalGenerator = ({ inputs }) => {
     const [type, setType] = useState("plazo"); 
     
@@ -1000,6 +1000,12 @@ const LegalGenerator = ({ inputs }) => {
                         width: 200pt;
                         padding-top: 5pt;
                     }
+                    .highlight-box {
+                        border: 2px solid #000000;
+                        padding: 10px;
+                        background-color: #f9f9f9;
+                        margin: 10px 0;
+                    }
                 </style>
             </head>
             <body>
@@ -1033,6 +1039,20 @@ const LegalGenerator = ({ inputs }) => {
                     ${optionText}
                 </div>
                 
+                <br/>
+                <div class="highlight-box">
+                    <p><strong>INSTRUCCIÓN PERMANENTE E IRREVOCABLE:</strong></p>
+                    <p>
+                        Para efectos de eficiencia administrativa y evitar trámites reiterativos, por medio del presente escrito dejo expresa la siguiente instrucción:
+                        A partir de la fecha, solicito que <strong>CUALQUIER suma de dinero</strong> que ingrese a mi obligación y que 
+                        <strong>exceda el valor de la cuota mensual facturada</strong>, sea aplicada automáticamente como <strong>ABONO A CAPITAL</strong> bajo la modalidad aquí seleccionada (Reducción de Plazo o Cuota según indiqué arriba).
+                    </p>
+                    <p>
+                        Esta instrucción se mantendrá vigente para todos los pagos futuros hasta que yo manifieste lo contrario por escrito. Por tanto, 
+                        <strong>no será necesario que yo remita una nueva carta o notificación por cada abono extraordinario</strong> que realice en el futuro.
+                    </p>
+                </div>
+
                 <p>
                     Aclaro que este pago <strong>NO debe ser tomado como un adelanto de cuotas futuras</strong>, sino como una amortización extraordinaria 
                     al saldo de capital vigente al momento del pago, tal como lo ordena la Circular Básica Jurídica de la Superintendencia Financiera de Colombia.
@@ -1056,12 +1076,12 @@ const LegalGenerator = ({ inputs }) => {
         
         const link = document.createElement("a");
         link.href = url;
-        link.download = `Carta_Abono_${personalData.bank || 'Banco'}.doc`;
+        link.download = `Carta_Abono_Blindada_${personalData.bank || 'Banco'}.doc`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        addToast("Descargando archivo Word optimizado...");
+        addToast("Descargando carta BLINDADA legalmente...");
     };
 
     const handlePrint = () => {
@@ -1123,7 +1143,7 @@ const LegalGenerator = ({ inputs }) => {
                 <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck size={120} className="text-amber-600"/></div>
                 <div className="relative z-10">
                     <h2 className="text-lg font-bold text-amber-900 mb-2">Generador de Documentos Jurídicos</h2>
-                    <p className="text-amber-800 text-sm mb-4">Esta carta está blindada jurídicamente con la Ley 546 de 1999 para garantizar que tu abono se aplique correctamente.</p>
+                    <p className="text-amber-800 text-sm mb-4">Esta carta está blindada jurídicamente con la Ley 546 de 1999 e incluye la instrucción de pago permanente.</p>
                 </div>
             </div>
 
@@ -1201,6 +1221,19 @@ const LegalGenerator = ({ inputs }) => {
                                         con el fin de <strong>disminuir el valor mensual de la cuota futura</strong> (Reducción de Cuota).
                                     </>
                                 )}
+                            </div>
+
+                            <div className="mb-6 p-4 border border-slate-300 bg-slate-50 rounded-lg">
+                                <p className="font-bold underline mb-2">INSTRUCCIÓN PERMANENTE E IRREVOCABLE:</p>
+                                <p className="mb-2 text-sm">
+                                    Para efectos de eficiencia administrativa y evitar trámites reiterativos, por medio del presente escrito dejo expresa la siguiente instrucción:
+                                    A partir de la fecha, solicito que <strong>CUALQUIER suma de dinero</strong> que ingrese a mi obligación y que 
+                                    <strong>exceda el valor de la cuota mensual facturada</strong>, sea aplicada automáticamente como <strong>ABONO A CAPITAL</strong> bajo la modalidad aquí seleccionada.
+                                </p>
+                                <p className="text-sm">
+                                    Esta instrucción se mantendrá vigente para todos los pagos futuros hasta que yo manifieste lo contrario por escrito. Por tanto, 
+                                    <strong>no será necesario que yo remita una nueva carta o notificación por cada abono extraordinario</strong> que realice en el futuro.
+                                </p>
                             </div>
 
                             <p className="mb-4">
