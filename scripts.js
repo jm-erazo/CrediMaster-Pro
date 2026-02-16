@@ -1026,12 +1026,12 @@ const LegalGenerator = ({ inputs }) => {
                 <p>
                     Yo, <strong>${clientName}</strong>, identificado(a) con la Cédula de Ciudadanía No. <strong>${clientCC}</strong>, 
                     en mi calidad de deudor del crédito de la referencia, acudo a ustedes para manifestar mi voluntad de realizar un <strong>ABONO EXTRAORDINARIO A CAPITAL</strong> 
-                    por valor de <strong>${amount}</strong> (o la suma que efectivamente consigne).
+                     por valor de <strong>${amount}</strong> (o la suma que efectivamente consigne).
                 </p>
                 <p>
                     De conformidad con lo establecido en la <strong>Ley 546 de 1999 (Ley de Vivienda), Artículo 17, Numeral 8</strong>, 
                     los deudores de créditos de vivienda tenemos el derecho irrenunciable a prepagar total o parcialmente nuestras obligaciones 
-                    <strong>sin penalidad alguna</strong>.
+                    <strong> sin penalidad alguna</strong>.
                 </p>
                 <p>En ejercicio de este derecho, solicito expresamente que este dinero se aplique de la siguiente manera:</p>
                 
@@ -1045,11 +1045,11 @@ const LegalGenerator = ({ inputs }) => {
                     <p>
                         Para efectos de eficiencia administrativa y evitar trámites reiterativos, por medio del presente escrito dejo expresa la siguiente instrucción:
                         A partir de la fecha, solicito que <strong>CUALQUIER suma de dinero</strong> que ingrese a mi obligación y que 
-                        <strong>exceda el valor de la cuota mensual facturada</strong>, sea aplicada automáticamente como <strong>ABONO A CAPITAL</strong> bajo la modalidad aquí seleccionada (Reducción de Plazo o Cuota según indiqué arriba).
+                        <strong> exceda el valor de la cuota mensual facturada</strong>, sea aplicada automáticamente como <strong>ABONO A CAPITAL</strong> bajo la modalidad previamente mencionada en esta carta.
                     </p>
                     <p>
                         Esta instrucción se mantendrá vigente para todos los pagos futuros hasta que yo manifieste lo contrario por escrito. Por tanto, 
-                        <strong>no será necesario que yo remita una nueva carta o notificación por cada abono extraordinario</strong> que realice en el futuro.
+                        <strong> no será necesario que yo remita una nueva carta o notificación por cada abono extraordinario</strong> que realice en el futuro.
                     </p>
                 </div>
 
